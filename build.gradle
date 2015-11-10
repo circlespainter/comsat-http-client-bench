@@ -1,0 +1,121 @@
+version             = '0.1.0-SNAPSHOT'
+status              = 'integration'
+description         = 'Comsat HTTP Client Bench'
+
+def getDependencies(config) {
+    return config.getAllDependencies().collect {
+        def res = it.group + ':' + it.name + ':' + it.version
+        if(!it.excludeRules.isEmpty()) {
+            res += "(" + it.excludeRules.collect { it.group + ':' + it.module }.join(',') + ")"
+        }
+        return res
+    }
+}
+
+allprojects {
+    apply plugin: 'java'
+    apply plugin: 'application'
+
+    ext.classifier      = ':'  // ':jdk8'
+    sourceCompatibility = 1.8     // 1.7
+    targetCompatibility = 1.8     // 1.7
+
+    ext.quasarVer       = '0.7.4-SNAPSHOT'
+    ext.comsatVer       = '0.5.0'
+    ext.slf4jVer        = '1.7.12'
+    ext.log4jVer        = '1.2.17'
+    ext.jbenderVer      = '1.0.1-SNAPSHOT'
+    ext.junitVer        = '4.12'
+    ext.capsuleVersion  = '1.0.2-SNAPSHOT'
+
+    ext.metricsVer      = '3.1.2'
+    ext.jdbiVer         = '2.63.1'
+    ext.slf4jApiVer     = '1.7.12'
+    ext.httpCoreVer     = '4.4.1'
+    ext.httpClientVer   = '4.5'
+
+    [compileJava, compileTestJava]*.options*.encoding = 'UTF-8'
+
+    configurations {
+        quasar
+        capsule
+    }
+
+    configurations.all {
+        resolutionStrategy {
+            failOnVersionConflict()
+            force "org.jdbi:jdbi:$jdbiVer"
+            force "io.dropwizard.metrics:metrics-core:$metricsVer"
+            force "org.slf4j:slf4j-api:$slf4jApiVer"
+            force "org.apache.httpcomponents:httpcore:$httpCoreVer"
+            force "org.apache.httpcomponents:httpclient:$httpClientVer"
+        }
+    }
+
+    repositories {
+        mavenLocal()
+        mavenCentral()
+    //    maven { url "https://oss.sonatype.org/content/repositories/releases" }
+        maven { url 'https://oss.sonatype.org/content/repositories/snapshots' }
+    //    maven { url 'https://maven.java.net/content/repositories/snapshots' }
+    }
+
+    test {
+        beforeTest { desc ->
+            logger.quiet("Running test: " + desc)
+        }
+
+        afterTest { desc, result ->
+            if(result.resultType == TestResult.ResultType.FAILURE) {
+                logger.quiet("Failed test ${desc.name} [${desc.className}] with exception: ${result.exception}")
+                if(result.exception != null) {
+                    result.exception.printStackTrace()
+                }
+            }
+        }
+    }
+
+    dependencies {
+        compile "co.paralleluniverse:quasar-core:${quasarVer}${classifier}"
+
+        capsule "co.paralleluniverse:capsule:$capsuleVersion"
+
+        quasar "co.paralleluniverse:quasar-core:${quasarVer}${classifier}@jar"
+
+        testCompile "junit:junit:$junitVer"
+    }
+
+    task fatCapsule(type: Jar, dependsOn: jar) {
+        archiveName = "${project.name}-fatcap.jar"
+
+        from jar // embed our application jar
+
+        from { configurations.runtime } // embed dependencies
+
+        from(configurations.capsule.collect { zipTree(it) }) { include 'Capsule.class' } // we just need the single Capsule class
+
+        manifest {
+            attributes (
+                'Premain-Class'       : 'Capsule',
+                'Main-Class'          : 'Capsule',
+                'Application-Class'   : 'Main',
+                'Application-Version' : project.version,
+                'JVM-Args'            : run.jvmArgs.join(' '),
+                'System-Properties'   : run.systemProperties.collect { k,v -> "$k=$v" }.join(' '),
+                'Java-Agents'         : getDependencies(configurations.quasar).iterator().next(),
+                'Repositories'      : 'central https://oss.sonatype.org/content/repositories/snapshots'
+            )
+        }
+    }
+
+    run {
+        // systemProperty 'co.paralleluniverse.fibers.verifyInstrumentation', 'true'
+        // systemProperty 'co.paralleluniverse.fibers.detectRunawayFibers', 'false'
+    }
+
+    applicationDefaultJvmArgs = [
+        "-javaagent:${configurations.quasar.singleFile}"
+    ]
+
+    defaultTasks 'fatCapsule'
+}

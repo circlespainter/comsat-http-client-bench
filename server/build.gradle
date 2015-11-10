@@ -1,0 +1,3 @@
+dependencies {
+    compile "co.paralleluniverse:comsat-dropwizard:${comsatVer}"
+}

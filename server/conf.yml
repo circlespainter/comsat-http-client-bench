@@ -1,0 +1,10 @@
+server:
+  maxThreads: 50
+  minThreads: 50
+  maxQueuedRequests: 100000
+  applicationConnectors:
+  - type: http
+    port: 9000
+  adminConnectors: []
+  requestLog:
+    appenders: []
