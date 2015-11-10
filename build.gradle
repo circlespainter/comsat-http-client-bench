@@ -33,6 +33,7 @@ allprojects {
     ext.slf4jApiVer     = '1.7.12'
     ext.httpCoreVer     = '4.4.1'
     ext.httpClientVer   = '4.5'
+    ext.hdrVer          = '2.1.7'
 
     [compileJava, compileTestJava]*.options*.encoding = 'UTF-8'
 
@@ -49,6 +50,8 @@ allprojects {
             force "org.slf4j:slf4j-api:$slf4jApiVer"
             force "org.apache.httpcomponents:httpcore:$httpCoreVer"
             force "org.apache.httpcomponents:httpclient:$httpClientVer"
+            force "org.hdrhistogram:HdrHistogram:${hdrVer}"
+            force "co.paralleluniverse:quasar-core:${quasarVer}"
         }
     }
 

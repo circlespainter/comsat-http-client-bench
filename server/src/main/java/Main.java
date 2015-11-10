@@ -22,12 +22,12 @@ public class Main extends FiberApplication<Configuration> {
     env.jersey().register(new HelloWorldResource());
   }
 
-  @Path("/hello-world")
+  @Path("/")
   @Produces(MediaType.TEXT_PLAIN)
   public static class HelloWorldResource {
     @GET @Suspendable public String sayHello(@QueryParam("sleepMS") Long sleepMS) {
       try {
-        Fiber.sleep(sleepMS != null ? sleepMS : 10_000L);
+        Fiber.sleep(sleepMS != null ? sleepMS : 1_000L);
         return "Hello!";
       } catch (final Throwable t) {
         throw new AssertionError(t);
