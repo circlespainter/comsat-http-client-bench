@@ -21,12 +21,10 @@ import java.util.concurrent.ExecutionException;
 
 import static com.pinterest.jbender.events.recording.Recorder.record;
 
-public class ClientBase<Req, Res, Exec extends AutoCloseableRequestExecutor<Req, Res>> {
-  private final Env<Req, Exec> env;
+public abstract class ClientBase<Req, Res, Exec extends AutoCloseableRequestExecutor<Req, Res>, E extends Env<Req, Exec>> {
+  private E env;
 
-  public ClientBase(Env<Req, Exec> env) {
-    this.env = env;
-  }
+  protected abstract E setupEnv(OptionSet options);
 
   final public void run(final String[] args) throws SuspendExecution, InterruptedException, ExecutionException, IOException {
     final OptionParser parser = new OptionParser();
@@ -50,6 +48,7 @@ public class ClientBase<Req, Res, Exec extends AutoCloseableRequestExecutor<Req,
     if (options.has("h")) {
       parser.printHelpOn(System.out);
     } else {
+      env = setupEnv(options);
       final IntervalGenerator intervalGen = new ExponentialIntervalGenerator(options.valueOf(r));
       try (final Exec requestExecutor =
           env.newRequestExecutor(options.valueOf(i), options.valueOf(m), options.valueOf(t))) {
@@ -62,7 +61,11 @@ public class ClientBase<Req, Res, Exec extends AutoCloseableRequestExecutor<Req,
         // Requests generator
         final Fiber<Void> reqGen = new Fiber<Void>("req-gen", () -> {
           for (int j = 0; j < reqs; ++j) {
-            final Req req = env.newRequest(uri);
+            Req req = null;
+            try {
+              req = env.newRequest(uri);
+            } catch (final Exception e) {
+              LOG.error("Got exception when constructing request: " + e.getMessage());            }
             requestCh.send(req);
           }
 
@@ -88,7 +91,7 @@ public class ClientBase<Req, Res, Exec extends AutoCloseableRequestExecutor<Req,
         }).start().join();
 
         histogram.outputPercentileDistribution(System.out, options.valueOf(s));
-      } catch (Exception e) {
+      } catch (final Exception e) {
         LOG.error("Got exception: " + e.getMessage());
       }
     }
