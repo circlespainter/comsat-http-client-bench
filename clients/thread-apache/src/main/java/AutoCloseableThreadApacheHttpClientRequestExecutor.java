@@ -1,46 +1,36 @@
-import co.paralleluniverse.common.util.Exceptions;
 import co.paralleluniverse.fibers.SuspendExecution;
 import co.paralleluniverse.strands.channels.Channel;
 import co.paralleluniverse.strands.channels.Channels;
-import com.pinterest.jbender.executors.RequestExecutor;
 import com.pinterest.jbender.executors.Validator;
-import com.pinterest.jbender.executors.http.FiberApacheHttpClientRequestExecutor;
-import org.apache.http.ConnectionReuseStrategy;
-import org.apache.http.client.HttpClient;
+import org.apache.http.client.config.RequestConfig;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpRequestBase;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
-import org.apache.http.impl.nio.reactor.DefaultConnectingIOReactor;
-import org.apache.http.impl.nio.reactor.IOReactorConfig;
 import org.apache.http.nio.reactor.IOReactorException;
-
 import java.io.IOException;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
 
-public class AutoCloseableThreadApacheHttpClientRequestExecutor<X extends HttpRequestBase> implements AutoCloseableRequestExecutor<X, CloseableHttpResponse>{
+public class AutoCloseableThreadApacheHttpClientRequestExecutor<X extends HttpRequestBase> implements AutoCloseableRequestExecutor<X, CloseableHttpResponse> {
   private final Validator<CloseableHttpResponse> validator;
   private final CloseableHttpClient client;
+  private final RequestConfig requestConfig;
 
-  public AutoCloseableThreadApacheHttpClientRequestExecutor(Validator<CloseableHttpResponse> resValidator, int maxConnections, int timeout, int parallelism) throws IOReactorException {
-    this.client = HttpClients.custom().setMaxConnTotal(maxConnections).setConnectionTimeToLive(timeout, TimeUnit.MILLISECONDS).build();
+  public AutoCloseableThreadApacheHttpClientRequestExecutor(Validator<CloseableHttpResponse> resValidator, int maxConnections, int timeout) throws IOReactorException {
+    this.client = HttpClients.custom()
+      .setMaxConnTotal(maxConnections)
+      .setMaxConnPerRoute(maxConnections)
+      .build();
+    this.requestConfig =
+      RequestConfig.custom()
+        .setSocketTimeout(timeout)
+        .setConnectTimeout(timeout)
+        .setConnectionRequestTimeout(timeout)
+        .build();
     this.validator = resValidator;
   }
 
-  public AutoCloseableThreadApacheHttpClientRequestExecutor(Validator<CloseableHttpResponse> resValidator, int maxConnections, int timeout) throws IOReactorException {
-    this(resValidator, maxConnections, timeout, Runtime.getRuntime().availableProcessors());
-  }
-
-  public AutoCloseableThreadApacheHttpClientRequestExecutor(Validator<CloseableHttpResponse> resValidator, int maxConnections) throws IOReactorException {
-    this(resValidator, maxConnections, 0);
-  }
-
-  public AutoCloseableThreadApacheHttpClientRequestExecutor(int maxConnections) throws IOReactorException {
-    this(null, maxConnections, 0);
-  }
-
   public CloseableHttpResponse execute(long nanoTime, HttpRequestBase request) throws InterruptedException, SuspendExecution {
+    request.setConfig(requestConfig);
     CloseableHttpResponse ret;
     final Channel<CloseableHttpResponse> c = Channels.newChannel(0);
     new Thread(() -> {
@@ -56,6 +46,12 @@ public class AutoCloseableThreadApacheHttpClientRequestExecutor<X extends HttpRe
 
     if(this.validator != null) {
       this.validator.validate(ret);
+    }
+
+    try {
+      ret.close();
+    } catch (final IOException e) {
+      throw new RuntimeException(e);
     }
 
     return ret;

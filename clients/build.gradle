@@ -1,6 +1,9 @@
 dependencies {
     compile "com.pinterest:jbender:${jbenderVer}"
-    compile "com.pinterest:jbender:${jbenderVer}"
+
+    compile "co.paralleluniverse:comsat-jax-rs-client:$comsatVer"
+    compile "co.paralleluniverse:comsat-okhttp:$comsatVer"
+
     compile "org.slf4j:slf4j-api:${slf4jApiVer}"
 
     compile "ch.qos.logback:logback-classic:1.1.3"

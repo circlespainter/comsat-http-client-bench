@@ -1,7 +1,3 @@
-version             = '0.1.0-SNAPSHOT'
-status              = 'integration'
-description         = 'Comsat HTTP Client Bench'
-
 def getDependencies(config) {
     return config.getAllDependencies().collect {
         def res = it.group + ':' + it.name + ':' + it.version
@@ -13,6 +9,10 @@ def getDependencies(config) {
 }
 
 allprojects {
+    version             = '0.1.0-SNAPSHOT'
+    status              = 'integration'
+    description         = 'Comsat HTTP Client Bench'
+
     apply plugin: 'java'
     apply plugin: 'application'
 
@@ -101,8 +101,9 @@ allprojects {
             attributes (
                 'Premain-Class'       : 'Capsule',
                 'Main-Class'          : 'Capsule',
-                'Application-Class'   : 'Main',
+                'Application-Name'    : project.name,
                 'Application-Version' : project.version,
+                'Application-Class'   : 'Main',
                 'JVM-Args'            : run.jvmArgs.join(' '),
                 'System-Properties'   : run.systemProperties.collect { k,v -> "$k=$v" }.join(' '),
                 'Java-Agents'         : getDependencies(configurations.quasar).iterator().next(),

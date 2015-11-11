@@ -7,7 +7,7 @@ public class ThreadApacheEnv implements Env<HttpGet, AutoCloseableThreadApacheHt
       final int sc = r.getStatusLine().getStatusCode();
       if (sc != 200 && sc != 204)
         throw new AssertionError("Request didn't complete successfully: " + r.getStatusLine().toString());
-    }, ioParallelism, maxConnections, timeout);
+    }, maxConnections, timeout);
   }
 
   @Override
