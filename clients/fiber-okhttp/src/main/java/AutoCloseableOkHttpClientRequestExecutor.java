@@ -11,11 +11,11 @@ import java.io.IOException;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.TimeUnit;
 
-public class AutoCloseableFiberOkHttpClientRequestExecutor implements AutoCloseableRequestExecutor<Request, Response> {
+public class AutoCloseableOkHttpClientRequestExecutor implements AutoCloseableRequestExecutor<Request, Response> {
   protected final Validator<Response> validator;
   protected final OkHttpClient client;
 
-  public AutoCloseableFiberOkHttpClientRequestExecutor(OkHttpClient client, Validator<Response> resValidator, int ioParallelism, int maxConnections, int timeout) {
+  public AutoCloseableOkHttpClientRequestExecutor(OkHttpClient client, Validator<Response> resValidator, int ioParallelism, int maxConnections, int timeout) {
     this.validator = resValidator;
     this.client = client;
     client.setDispatcher(new Dispatcher(new ForkJoinPool(ioParallelism)));
@@ -26,7 +26,7 @@ public class AutoCloseableFiberOkHttpClientRequestExecutor implements AutoClosea
     client.setWriteTimeout(timeout, TimeUnit.MILLISECONDS);
   }
 
-  public AutoCloseableFiberOkHttpClientRequestExecutor(Validator<Response> resValidator, int ioParallelism, int maxReqs, int timeout) {
+  public AutoCloseableOkHttpClientRequestExecutor(Validator<Response> resValidator, int ioParallelism, int maxReqs, int timeout) {
     this(new FiberOkHttpClient(), resValidator, ioParallelism, maxReqs, timeout);
   }
 

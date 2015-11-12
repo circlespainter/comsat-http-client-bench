@@ -31,18 +31,12 @@ public class AutoCloseableThreadApacheHttpClientRequestExecutor<X extends HttpRe
 
   public CloseableHttpResponse execute(long nanoTime, HttpRequestBase request) throws InterruptedException, SuspendExecution {
     request.setConfig(requestConfig);
-    CloseableHttpResponse ret;
-    final Channel<CloseableHttpResponse> c = Channels.newChannel(0);
-    new Thread(() -> {
-      try {
-        c.send(this.client.execute(request));
-      } catch (final IOException | InterruptedException e) {
-        throw new RuntimeException(e);
-      } catch (final SuspendExecution e) {
-        throw new AssertionError(e);
-      }
-    }).start();
-    ret = c.receive();
+    final CloseableHttpResponse ret;
+    try {
+      ret = this.client.execute(request);
+    } catch (final IOException e) {
+      throw new RuntimeException(e);
+    }
 
     if(this.validator != null) {
       this.validator.validate(ret);

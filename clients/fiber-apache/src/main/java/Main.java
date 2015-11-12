@@ -1,3 +1,4 @@
+import co.paralleluniverse.fibers.DefaultFiberScheduler;
 import co.paralleluniverse.fibers.SuspendExecution;
 import joptsimple.OptionSet;
 import org.apache.http.client.methods.CloseableHttpResponse;
@@ -14,6 +15,6 @@ public class Main extends ClientBase<HttpGet, CloseableHttpResponse, AutoCloseab
   }
 
   public static void main(String[] args) throws InterruptedException, ExecutionException, SuspendExecution, IOException {
-    new Main().run(args);
+    new Main().run(args, DEFAULT_FIBERS_SF);
   }
 }

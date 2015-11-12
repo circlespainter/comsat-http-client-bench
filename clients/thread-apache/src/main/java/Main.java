@@ -14,6 +14,6 @@ public class Main extends ClientBase<HttpGet, CloseableHttpResponse, AutoCloseab
   }
 
   public static void main(String[] args) throws InterruptedException, ExecutionException, SuspendExecution, IOException {
-    new Main().run(args);
+    new Main().run(args, CACHED_THREAD_SF);
   }
 }

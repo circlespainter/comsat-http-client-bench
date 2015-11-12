@@ -4,10 +4,10 @@ import javax.ws.rs.client.Invocation;
 import javax.ws.rs.core.Response;
 import java.io.IOException;
 
-public class AutoCloseableFiberJerseyHttpClientRequestExecutor implements AutoCloseableRequestExecutor<Invocation.Builder, Response> {
+public class AutoCloseableJerseyHttpClientRequestExecutor implements AutoCloseableRequestExecutor<Invocation.Builder, Response> {
   protected final Validator<Response> validator;
 
-  public AutoCloseableFiberJerseyHttpClientRequestExecutor(Validator<Response> resValidator) {
+  public AutoCloseableJerseyHttpClientRequestExecutor(Validator<Response> resValidator) {
     this.validator = resValidator;
   }
 
