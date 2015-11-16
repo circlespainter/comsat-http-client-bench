@@ -1,13 +1,21 @@
 import org.apache.http.client.methods.HttpGet;
+import org.apache.http.impl.client.HttpClients;
 
-public class ThreadApacheEnv implements Env<HttpGet, AutoCloseableThreadApacheHttpClientRequestExecutor<HttpGet>> {
+import java.util.concurrent.TimeUnit;
+
+public class ThreadApacheEnv implements Env<HttpGet, AutoCloseableApacheHttpClientRequestExecutor<HttpGet>> {
   @Override
-  public AutoCloseableThreadApacheHttpClientRequestExecutor<HttpGet> newRequestExecutor(int ioParallelism, int maxConnections, int timeout) throws Exception {
-    return new AutoCloseableThreadApacheHttpClientRequestExecutor<>(r -> {
-      final int sc = r.getStatusLine().getStatusCode();
-      if (sc != 200 && sc != 204)
-        throw new AssertionError("Request didn't complete successfully: " + r.getStatusLine().toString());
-    }, maxConnections, timeout);
+  public AutoCloseableApacheHttpClientRequestExecutor<HttpGet> newRequestExecutor(int ioParallelism, int maxConnections, int timeout) throws Exception {
+    return new AutoCloseableApacheHttpClientRequestExecutor<> (
+      HttpClients.custom()
+        .setMaxConnTotal(maxConnections)
+        .setMaxConnPerRoute(maxConnections)
+        .setConnectionTimeToLive(timeout, TimeUnit.MILLISECONDS)
+        .setDefaultRequestConfig(AutoCloseableApacheHttpClientRequestExecutor.defaultRequestConfig(timeout))
+        .disableAutomaticRetries()
+        .build(),
+      AutoCloseableApacheHttpClientRequestExecutor.DEFAULT_VALIDATOR
+    );
   }
 
   @Override

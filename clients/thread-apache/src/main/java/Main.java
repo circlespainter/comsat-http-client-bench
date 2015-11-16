@@ -6,7 +6,7 @@ import org.apache.http.client.methods.HttpGet;
 import java.io.IOException;
 import java.util.concurrent.ExecutionException;
 
-public class Main extends ClientBase<HttpGet, CloseableHttpResponse, AutoCloseableThreadApacheHttpClientRequestExecutor<HttpGet>, ThreadApacheEnv> {
+public class Main extends ClientBase<HttpGet, CloseableHttpResponse, AutoCloseableApacheHttpClientRequestExecutor<HttpGet>, ThreadApacheEnv> {
 
   @Override
   protected ThreadApacheEnv setupEnv(OptionSet options) {

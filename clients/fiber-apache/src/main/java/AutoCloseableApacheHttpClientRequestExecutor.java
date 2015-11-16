@@ -1,36 +1,39 @@
 import co.paralleluniverse.fibers.SuspendExecution;
-import co.paralleluniverse.strands.channels.Channel;
-import co.paralleluniverse.strands.channels.Channels;
 import com.pinterest.jbender.executors.Validator;
 import org.apache.http.client.config.RequestConfig;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpRequestBase;
 import org.apache.http.impl.client.CloseableHttpClient;
-import org.apache.http.impl.client.HttpClients;
 import org.apache.http.nio.reactor.IOReactorException;
 import java.io.IOException;
 
-public class AutoCloseableThreadApacheHttpClientRequestExecutor<X extends HttpRequestBase> implements AutoCloseableRequestExecutor<X, CloseableHttpResponse> {
+public class AutoCloseableApacheHttpClientRequestExecutor<X extends HttpRequestBase> extends AutoCloseableRequestExecutor<X, CloseableHttpResponse> {
+
   private final Validator<CloseableHttpResponse> validator;
   private final CloseableHttpClient client;
-  private final RequestConfig requestConfig;
 
-  public AutoCloseableThreadApacheHttpClientRequestExecutor(Validator<CloseableHttpResponse> resValidator, int maxConnections, int timeout) throws IOReactorException {
-    this.client = HttpClients.custom()
-      .setMaxConnTotal(maxConnections)
-      .setMaxConnPerRoute(maxConnections)
+  public static RequestConfig defaultRequestConfig(int timeoutMS) {
+    return RequestConfig
+      .custom()
+      .setLocalAddress(null)
+      .setSocketTimeout(timeoutMS)
+      .setConnectTimeout(timeoutMS)
+      .setConnectionRequestTimeout(timeoutMS)
       .build();
-    this.requestConfig =
-      RequestConfig.custom()
-        .setSocketTimeout(timeout)
-        .setConnectTimeout(timeout)
-        .setConnectionRequestTimeout(timeout)
-        .build();
+  }
+
+  public static final Validator<CloseableHttpResponse> DEFAULT_VALIDATOR = r -> {
+    final int sc = r.getStatusLine().getStatusCode();
+    if (sc != 200 && sc != 204)
+      throw new AssertionError("Request didn't complete successfully: " + r.getStatusLine().toString());
+  };
+
+  public AutoCloseableApacheHttpClientRequestExecutor(CloseableHttpClient client, Validator<CloseableHttpResponse> resValidator) throws IOReactorException {
+    this.client = client;
     this.validator = resValidator;
   }
 
-  public CloseableHttpResponse execute(long nanoTime, HttpRequestBase request) throws InterruptedException, SuspendExecution {
-    request.setConfig(requestConfig);
+  public CloseableHttpResponse execute0(long nanoTime, HttpRequestBase request) throws InterruptedException, SuspendExecution {
     final CloseableHttpResponse ret;
     try {
       ret = this.client.execute(request);

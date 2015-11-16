@@ -1,3 +1,4 @@
 dependencies {
+    compile project(":")
     compile "co.paralleluniverse:comsat-dropwizard:${comsatVer}"
 }

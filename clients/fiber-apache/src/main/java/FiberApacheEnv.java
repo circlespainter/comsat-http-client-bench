@@ -1,21 +1,30 @@
+import co.paralleluniverse.fibers.httpclient.FiberHttpClient;
 import org.apache.http.client.methods.HttpGet;
+import org.apache.http.impl.nio.client.CloseableHttpAsyncClient;
+import org.apache.http.impl.nio.client.HttpAsyncClientBuilder;
+import org.apache.http.impl.nio.conn.PoolingNHttpClientConnectionManager;
+import org.apache.http.impl.nio.reactor.DefaultConnectingIOReactor;
+import org.apache.http.impl.nio.reactor.IOReactorConfig;
 
-import java.io.IOException;
-
-public class FiberApacheEnv implements Env<HttpGet, AutoCloseableFiberApacheHttpClientRequestExecutor<HttpGet>> {
+public class FiberApacheEnv implements Env<HttpGet, AutoCloseableApacheHttpClientRequestExecutor<HttpGet>> {
   @Override
-  public AutoCloseableFiberApacheHttpClientRequestExecutor<HttpGet> newRequestExecutor(int ioParallelism, int maxConnections, int timeout) throws Exception {
-    return new AutoCloseableFiberApacheHttpClientRequestExecutor<>(r -> {
-      try {
-        r.close();
-      } catch (final IOException e) {
-        throw new RuntimeException(e);
-      }
+  public AutoCloseableApacheHttpClientRequestExecutor<HttpGet> newRequestExecutor(int ioParallelism, int maxConnections, int timeout) throws Exception {
+    final DefaultConnectingIOReactor ioReactor = new DefaultConnectingIOReactor(IOReactorConfig.custom().setConnectTimeout(timeout).setIoThreadCount(ioParallelism).setSoTimeout(timeout).build());
+    final PoolingNHttpClientConnectionManager mgr = new PoolingNHttpClientConnectionManager(ioReactor);
+    mgr.setDefaultMaxPerRoute(maxConnections);
+    mgr.setMaxTotal(maxConnections);
 
-      final int sc = r.getStatusLine().getStatusCode();
-      if (sc != 200 && sc != 204)
-        throw new AssertionError("Request didn't complete successfully: " + r.getStatusLine().toString());
-    }, ioParallelism, maxConnections, timeout);
+    CloseableHttpAsyncClient ahc =
+      HttpAsyncClientBuilder
+        .create()
+        .setConnectionManager(mgr)
+        .setDefaultRequestConfig(AutoCloseableApacheHttpClientRequestExecutor.defaultRequestConfig(timeout))
+        .build();
+
+    return new AutoCloseableApacheHttpClientRequestExecutor<> (
+      new FiberHttpClient(ahc),
+      AutoCloseableApacheHttpClientRequestExecutor.DEFAULT_VALIDATOR
+    );
   }
 
   @Override

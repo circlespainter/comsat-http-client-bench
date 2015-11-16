@@ -20,6 +20,8 @@ import org.slf4j.LoggerFactory;
 import static java.util.Arrays.*;
 
 import java.io.IOException;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.util.concurrent.*;
 
 import static com.pinterest.jbender.events.recording.Recorder.record;
@@ -41,20 +43,27 @@ public abstract class ClientBase<Req, Res, Exec extends AutoCloseableRequestExec
     final OptionParser parser = new OptionParser();
     final OptionSpec<Integer> r = parser.acceptsAll(asList("r", "rate")).withOptionalArg().ofType(Integer.class).describedAs("The desired throughput, in requests per second");
     final OptionSpec<Integer> v = parser.acceptsAll(asList("v", "interval")).withOptionalArg().ofType(Integer.class).describedAs("The interval between requests, in milliseconds");
-    final OptionSpec<Integer> n = parser.acceptsAll(asList("n", "maxConcurrency")).withOptionalArg().ofType(Integer.class).describedAs("Maximum concurrency level").defaultsTo(100);
+    final OptionSpec<Integer> n = parser.acceptsAll(asList("n", "maxConcurrency")).withOptionalArg().ofType(Integer.class).describedAs("Maximum concurrency level");
     final OptionSpec<Integer> w = parser.acceptsAll(asList("w", "warmup")).withOptionalArg().ofType(Integer.class).describedAs("The number of requests used to warm up the load tester").defaultsTo(1_000);
     final OptionSpec<Integer> c = parser.acceptsAll(asList("c", "count")).withRequiredArg().ofType(Integer.class).describedAs("Requests count").defaultsTo(11_000);
     parser.acceptsAll(asList(P, "preGenerateRequests"));
 
-    final OptionSpec<String> u = parser.acceptsAll(asList("u", "URI")).withRequiredArg().ofType(String.class).describedAs("URI").defaultsTo("http://localhost:9000");
+    final OptionSpec<String> u = parser.acceptsAll(asList("u", "url")).withRequiredArg().ofType(String.class).describedAs("URI").defaultsTo("http://localhost:9000");
+    final OptionSpec<String> z = parser.acceptsAll(asList("z", "monitorURL")).withRequiredArg().ofType(String.class).describedAs("Monitor control base URI").defaultsTo("http://localhost:9000/monitor");
 
-    final OptionSpec<Long> x = parser.acceptsAll(asList("x", "hdrHistHighest")).withRequiredArg().ofType(Long.class).describedAs("HDR Histogram highest trackable value").defaultsTo(60_000L * 1_000_000_000L);
+    final OptionSpec<Long> x = parser.acceptsAll(asList("x", "hdrHistHighest")).withRequiredArg().ofType(Long.class).describedAs("HDR Histogram highest trackable value").defaultsTo(3_600_000L * 1_000_000_000L);
     final OptionSpec<Integer> d = parser.acceptsAll(asList("d", "hdrHistDigits")).withRequiredArg().ofType(Integer.class).describedAs("HDR Histogram number of significant value digits").defaultsTo(3);
     final OptionSpec<Double> s = parser.acceptsAll(asList("s", "hdrHistScalingRatio")).withRequiredArg().ofType(Double.class).describedAs("HDR Histogram output value unit scaling ratio").defaultsTo(1_000_000.0d);
 
     final OptionSpec<Integer> i = parser.acceptsAll(asList("i", "ioParallelism")).withRequiredArg().ofType(Integer.class).describedAs("Number of OS threads performing actual I/O").defaultsTo(Runtime.getRuntime().availableProcessors());
     final OptionSpec<Integer> m = parser.acceptsAll(asList("m", "maxConnections")).withRequiredArg().ofType(Integer.class).describedAs("Maximum number of concurrent connections").defaultsTo(Integer.MAX_VALUE);
-    final OptionSpec<Integer> t = parser.acceptsAll(asList("t", "timeout")).withRequiredArg().ofType(Integer.class).describedAs("Connection timeout (ms)").defaultsTo(60_000);
+    final OptionSpec<Integer> t = parser.acceptsAll(asList("t", "timeout")).withRequiredArg().ofType(Integer.class).describedAs("Connection timeout (ms)").defaultsTo(3_600_000);
+
+    final OptionSpec<Integer> cmsi = parser.accepts("cmsi").withRequiredArg().ofType(Integer.class).describedAs("Client monitoring sample interval (ms)").defaultsTo(1_000);
+    final OptionSpec<Integer> cmpi = parser.accepts("cmpi").withRequiredArg().ofType(Integer.class).describedAs("Client monitoring print interval (ms)").defaultsTo(1_000);
+    final OptionSpec<Integer> smsi = parser.accepts("smsi").withRequiredArg().ofType(Integer.class).describedAs("Server monitoring sample interval (ms)").defaultsTo(1_000);
+    final OptionSpec<Integer> smpi = parser.accepts("smpi").withRequiredArg().ofType(Integer.class).describedAs("Server monitoring print interval (ms)").defaultsTo(1_000);
+
     parser.acceptsAll(asList(L, "logging"));
 
     parser.acceptsAll(asList(H, "?", "help"), "Show help").forHelp();
@@ -74,16 +83,19 @@ public abstract class ClientBase<Req, Res, Exec extends AutoCloseableRequestExec
     }
 
     System.err.println (
-      "\n=/=> JBender settings:\n" +
+      "\n=============== JBENDER SETTINGS ==============\n" +
         "\t* URL (-u): GET " + options.valueOf(u) + "\n" +
+        "\t* Monitor control base URL (-z): " + options.valueOf(z) + "\n" +
         "\t" +
-          (options.has(v) ?
-            (options.has(r) ?
-              "* Desired throughput for exponential interval generator (rps, -r): " + options.valueOf(r) :
-              "* Constant interval between requests (ms, -v): " + options.valueOf(v)
+          (!options.has(v) ?
+            (!options.has(r) ?
+              "* Maximum concurrency level (-n): " + options.valueOf(n) :
+              "* Desired throughput for exponential interval generator (rps, -r): " + options.valueOf(r)
             ) :
-            "* Maximum concurrency level (-n): " + options.valueOf(n)) +
+            "* Constant interval between requests (ms, -v): " + options.valueOf(v)
+          ) +
         "\n" +
+        "\t* Maximum open connections (-m): " + options.valueOf(m) + "\n" +
         "\t* IO Parallelism (async only, -i): " + options.valueOf(i) + "\n" +
         "\t* Requests count (-c): " + options.valueOf(c) + "\n" +
         "\t\t- Warmup requests (-w): " + options.valueOf(w) + "\n" +
@@ -93,7 +105,12 @@ public abstract class ClientBase<Req, Res, Exec extends AutoCloseableRequestExec
         "\t\t- Digits (-d): " + options.valueOf(d) + "\n" +
         "\t\t- Scaling ratio (-s): " + options.valueOf(s) + "\n" +
         "\t* Pre-generate (-p): " + options.has("p") + "\n" +
-        "\t* Logging (-l): " + options.has("l") + "\n"
+        "\t* Logging (-l): " + options.has("l") + "\n" +
+        "\t* Monitoring settings (-1 = N/A):\n" +
+        "\t\t- Client sample interval (-cmsi): " + options.valueOf(cmsi) + " ms\n" +
+        "\t\t- Client print interval (-cmpi): " + options.valueOf(cmpi) + " ms\n" +
+        "\t\t- Server sample interval (-smsi): " + options.valueOf(smsi) + " ms\n" +
+        "\t\t- Server print interval (-smpi): " + options.valueOf(smpi) + " ms\n"
     );
 
     env = setupEnv(options);
@@ -107,6 +124,7 @@ public abstract class ClientBase<Req, Res, Exec extends AutoCloseableRequestExec
       final Channel<TimingEvent<Res>> eventCh = Channels.newChannel(reqs);
 
       final String uri = options.valueOf(u);
+
       // Requests generator
       final Fiber<Void> reqGen = new Fiber<Void>("req-gen", () -> {
         for (int j = 0; j < reqs; ++j) {
@@ -115,7 +133,8 @@ public abstract class ClientBase<Req, Res, Exec extends AutoCloseableRequestExec
             req = env.newRequest(uri);
             requestCh.send(req);
           } catch (final Exception e) {
-            LOG.error("Got exception when constructing request: " + e.getMessage());            }
+            LOG.error("Got exception when constructing request: " + e.getMessage());
+          }
         }
 
         requestCh.close();
@@ -128,17 +147,25 @@ public abstract class ClientBase<Req, Res, Exec extends AutoCloseableRequestExec
       final Histogram histogram = new Histogram(options.valueOf(x), options.valueOf(d));
 
       // Event recording, both HistHDR and logging
+      final ProgressLogger<Res, Exec> resExecProgressLogger = new ProgressLogger<>(requestExecutor, recordedReqs, options.valueOf(cmsi), options.valueOf(cmpi));
+      final HdrHistogramRecorder hdrHistogramRecorder = new HdrHistogramRecorder(histogram, 1);
       if (options.has("l")) {
-        record(eventCh, new HdrHistogramRecorder(histogram, 1), new LoggingRecorder(LOG), new ProgressLogger(recordedReqs));
+        record(eventCh, hdrHistogramRecorder, new LoggingRecorder(LOG), resExecProgressLogger);
       } else {
-        record(eventCh, new HdrHistogramRecorder(histogram, 1), new ProgressLogger(recordedReqs));
+        record(eventCh, hdrHistogramRecorder, resExecProgressLogger);
       }
+
+      // Reset and start server monitoring
+      simpleBlockingGET(options.valueOf(z) + "/reset");
+      simpleBlockingGET(options.valueOf(z) + "/start?sampleIntervalMS=" + options.valueOf(smsi) + "&printIntervalMS=" + options.valueOf(smpi));
 
       // Main
       new Fiber<Void>("jbender", () -> {
         if (options.has(n)) {
+          System.err.println("=============== CONCURRENCY TEST ==============");
           JBender.loadTestConcurrency(options.valueOf(n), warms, requestCh, requestExecutor, eventCh, sf);
         } else {
+          System.err.println("================== RATE TEST ==================");
           IntervalGenerator intervalGen = null;
 
           if (options.has(r))
@@ -150,12 +177,28 @@ public abstract class ClientBase<Req, Res, Exec extends AutoCloseableRequestExec
         }
       }).start().join();
 
+      // Stop server monitoring
+      simpleBlockingGET(options.valueOf(z) + "/stop");
+
       e.shutdown();
 
       System.err.println();
       histogram.outputPercentileDistribution(System.err, options.valueOf(s));
     } catch (final Exception e) {
       LOG.error("Got exception: " + e.getMessage());
+    }
+  }
+
+  private static void simpleBlockingGET(String httpUrl) throws IOException {
+    HttpURLConnection _c = null;
+    try {
+      _c = (HttpURLConnection) new URL(httpUrl).openConnection();
+    } finally {
+      if (_c != null) {
+        _c.getInputStream().close();
+        _c.disconnect();
+      }
+      LOG.info("Performed GET " + httpUrl);
     }
   }
 

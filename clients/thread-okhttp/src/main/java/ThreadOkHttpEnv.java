@@ -4,11 +4,11 @@ import com.squareup.okhttp.Response;
 
 public class ThreadOkHttpEnv implements Env<Request, AutoCloseableOkHttpClientRequestExecutor> {
   @Override
-  public AutoCloseableOkHttpClientRequestExecutor newRequestExecutor(int ioParallelism, int maxConnections, int timeout) throws Exception {
+  public AutoCloseableOkHttpClientRequestExecutor newRequestExecutor(int ignored_ioParallelism, int maxConnections, int timeout) throws Exception {
     return new AutoCloseableOkHttpClientRequestExecutor(new OkHttpClient(), (Response r) -> {
       if (!r.isSuccessful())
         throw new AssertionError("Request didn't complete successfully");
-    }, ioParallelism, maxConnections, timeout);
+    }, maxConnections, timeout);
   }
 
   @Override

@@ -2,43 +2,44 @@ import co.paralleluniverse.fibers.RuntimeExecutionException;
 import co.paralleluniverse.fibers.SuspendExecution;
 import co.paralleluniverse.fibers.okhttp.FiberOkHttpClient;
 import com.pinterest.jbender.executors.Validator;
-import com.squareup.okhttp.Dispatcher;
-import com.squareup.okhttp.OkHttpClient;
-import com.squareup.okhttp.Request;
-import com.squareup.okhttp.Response;
+import com.squareup.okhttp.*;
 
 import java.io.IOException;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.TimeUnit;
 
-public class AutoCloseableOkHttpClientRequestExecutor implements AutoCloseableRequestExecutor<Request, Response> {
+public class AutoCloseableOkHttpClientRequestExecutor extends AutoCloseableRequestExecutor<Request, Response> {
   protected final Validator<Response> validator;
   protected final OkHttpClient client;
 
-  public AutoCloseableOkHttpClientRequestExecutor(OkHttpClient client, Validator<Response> resValidator, int ioParallelism, int maxConnections, int timeout) {
+  public AutoCloseableOkHttpClientRequestExecutor(OkHttpClient client, Validator<Response> resValidator, int maxConnections, int timeout) {
     this.validator = resValidator;
     this.client = client;
-    client.setDispatcher(new Dispatcher(new ForkJoinPool(ioParallelism)));
-    client.getDispatcher().setMaxRequests(maxConnections);
-    client.getDispatcher().setMaxRequestsPerHost(maxConnections);
-    client.setConnectTimeout(timeout, TimeUnit.MILLISECONDS);
-    client.setReadTimeout(timeout, TimeUnit.MILLISECONDS);
-    client.setWriteTimeout(timeout, TimeUnit.MILLISECONDS);
+
+    this.client.getDispatcher().setMaxRequests(maxConnections);
+    this.client.getDispatcher().setMaxRequestsPerHost(maxConnections);
+
+    this.client.setRetryOnConnectionFailure(false);
+
+    this.client.setConnectTimeout(timeout, TimeUnit.MILLISECONDS);
+    this.client.setReadTimeout(timeout, TimeUnit.MILLISECONDS);
+    this.client.setWriteTimeout(timeout, TimeUnit.MILLISECONDS);
   }
 
-  public AutoCloseableOkHttpClientRequestExecutor(Validator<Response> resValidator, int ioParallelism, int maxReqs, int timeout) {
-    this(new FiberOkHttpClient(), resValidator, ioParallelism, maxReqs, timeout);
+  public AutoCloseableOkHttpClientRequestExecutor(Validator<Response> resValidator, int maxReqs, int timeout) {
+    this(new FiberOkHttpClient(), resValidator, maxReqs, timeout);
   }
 
-  public Response execute(long nanoTime, Request request) throws InterruptedException, SuspendExecution {
+  public Response execute0(long nanoTime, Request request) throws InterruptedException, SuspendExecution {
     Response ret;
     try {
       ret = client.newCall(request).execute();
+      ret.body().close();
     } catch (final IOException e) {
       throw new RuntimeExecutionException(e);
     }
 
-    if(this.validator != null) {
+    if (this.validator != null) {
       this.validator.validate(ret);
     }
 
@@ -46,6 +47,7 @@ public class AutoCloseableOkHttpClientRequestExecutor implements AutoCloseableRe
   }
 
   public void close() throws IOException {
-    // TODO check there's nothing to do
+    // client.getConnectionPool().evictAll();
+    client.getDispatcher().getExecutorService().shutdown();
   }
 }
