@@ -21,3 +21,8 @@ Currently `${TECH}` can be one of the following:
 
 * `jersey` support configuring the HTTP connector with the additional `-Dcapsule.jvm.args="-Djersey.provider=<class name>`. The following short identifiers are recognised as well: `jetty` (default), `grizzly`, `jdk`, `apache`.
 * Besides the built-in system resources monitoring (disabled by default), JFR can be used ad es. with the additional `-Dcapsule.jvm.args="-XX:+UnlockCommercialFeatures -XX:+FlightRecorder -XX:FlightRecorderOptions=defaultrecording=true,dumponexit=true,dumponexitpath=${TECH}.jfr"` flag to the `java command`.
+
+## Examples
+
+* `-u http://${IP}:9000/?sleepMS=0 -c 11000 -r 100000` will push the client to reach the highest rate up to 100k rps.
+* `-u http://${IP}:9000/?sleepMS=3600000 -c 46000 -n 45000` will fire up up to 45k connections that will be answered by the server only after 1h (sustainable only by fiber-based testers).
