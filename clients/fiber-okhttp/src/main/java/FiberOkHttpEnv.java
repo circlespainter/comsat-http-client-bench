@@ -4,10 +4,7 @@ import com.squareup.okhttp.Response;
 public class FiberOkHttpEnv implements Env<Request, AutoCloseableOkHttpClientRequestExecutor> {
   @Override
   public AutoCloseableOkHttpClientRequestExecutor newRequestExecutor(int ignored_ioParallelism, int maxConnections, int timeout) throws Exception {
-    return new AutoCloseableOkHttpClientRequestExecutor((Response r) -> {
-      if (!r.isSuccessful())
-        throw new AssertionError("Request didn't complete successfully");
-    }, maxConnections, timeout);
+    return new AutoCloseableOkHttpClientRequestExecutor(AutoCloseableOkHttpClientRequestExecutor.DEFAULT_VALIDATOR, maxConnections, timeout);
   }
 
   @Override

@@ -9,6 +9,11 @@ import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.TimeUnit;
 
 public class AutoCloseableOkHttpClientRequestExecutor extends AutoCloseableRequestExecutor<Request, Response> {
+  public static final Validator<Response> DEFAULT_VALIDATOR = (Response r) -> {
+    if (!r.isSuccessful())
+      throw new AssertionError("Request didn't complete successfully");
+  };
+
   protected final Validator<Response> validator;
   protected final OkHttpClient client;
 
