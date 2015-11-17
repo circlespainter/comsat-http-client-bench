@@ -1,29 +1,37 @@
 import co.paralleluniverse.fibers.SuspendExecution;
 import com.pinterest.jbender.executors.Validator;
+
+import javax.ws.rs.client.Client;
 import javax.ws.rs.client.Invocation;
 import javax.ws.rs.core.Response;
 import java.io.IOException;
+import java.util.concurrent.ExecutionException;
 
-public class AutoCloseableJerseyHttpClientRequestExecutor extends AutoCloseableRequestExecutor<Invocation.Builder, Response> {
-  protected final Validator<Response> validator;
+public class AutoCloseableJerseyHttpClientRequestExecutor extends AutoCloseableRequestExecutor<Invocation.Builder, String> {
+  protected final Validator<String> validator;
+  protected final Client client;
 
-  public AutoCloseableJerseyHttpClientRequestExecutor(Validator<Response> resValidator) {
+  public AutoCloseableJerseyHttpClientRequestExecutor(Client client, Validator<String> resValidator) {
+    this.client = client;
     this.validator = resValidator;
   }
 
-  public Response execute0(long nanoTime, Invocation.Builder request) throws InterruptedException, SuspendExecution {
-    final Response ret = request.get();
-
-    if(this.validator != null) {
-      this.validator.validate(ret);
+  public String execute0(long nanoTime, Invocation.Builder request) throws InterruptedException, SuspendExecution {
+    final String ret;
+    try {
+      ret = request.async().get(String.class).get();
+    } catch (final ExecutionException e) {
+      throw new RuntimeException(e);
     }
 
-    ret.close();
+    if (this.validator != null) {
+      this.validator.validate(ret);
+    }
 
     return ret;
   }
 
   public void close() throws IOException {
-    // Stateless, nothing to do
+    client.close();
   }
 }

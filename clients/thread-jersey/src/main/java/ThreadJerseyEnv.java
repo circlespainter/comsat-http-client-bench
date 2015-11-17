@@ -13,22 +13,19 @@ public class ThreadJerseyEnv implements Env<Invocation.Builder, AutoCloseableJer
 
   @Override
   public AutoCloseableJerseyHttpClientRequestExecutor newRequestExecutor(int ioParallelism, int ignored, int timeout) throws Exception {
-    final Configuration config = new ClientConfig().connectorProvider((ConnectorProvider) Class.forName(System.getProperty("jersey.provider", JettyConnectorProvider.class.getName())).newInstance());
+    final Configuration config = new ClientConfig().connectorProvider(ClientBase.jerseyConnProvider());
 
     this.client = ClientBuilder.newClient(config)
-//      .property(ClientProperties.ASYNC_THREADPOOL_SIZE, ioParallelism)
+      .property(ClientProperties.ASYNC_THREADPOOL_SIZE, ioParallelism)
       .property(ClientProperties.CONNECT_TIMEOUT, timeout)
-      .property(ClientProperties.READ_TIMEOUT, timeout);
+      .property(ClientProperties.READ_TIMEOUT, timeout)
+    ;
 
-    return new AutoCloseableJerseyHttpClientRequestExecutor(r -> {
-      final int sc = r.getStatus();
-      if (sc != 200 && sc != 204)
-        throw new AssertionError("Request didn't complete successfully: " + sc);
-    });
+    return new AutoCloseableJerseyHttpClientRequestExecutor(client, ClientBase.STRING_VALIDATOR);
   }
 
   @Override
-  public Invocation.Builder newRequest(String uri) throws Exception {
-    return client.target(uri).request();
+  public Invocation.Builder newRequest(String url) throws Exception {
+    return client.target(url).request();
   }
 }
