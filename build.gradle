@@ -35,6 +35,8 @@ allprojects {
     ext.httpClientVer   = '4.5'
     ext.hdrVer          = '2.1.7'
 
+    ext.jerseyVer       = '2.19'
+
     [compileJava, compileTestJava]*.options*.encoding = 'UTF-8'
 
     configurations {
@@ -104,7 +106,7 @@ allprojects {
                 'Application-Name'    : project.name,
                 'Application-Version' : project.version,
                 'Application-Class'   : 'Main',
-                // 'JVM-Args'            : run.jvmArgs.join(' '),
+                'JVM-Args'            : '-XX:+AggressiveOpts',
                 'System-Properties'   : 'co.paralleluniverse.fibers.detectRunawayFibers=false', // 'co.paralleluniverse.fibers.verifyInstrumentation'
                 'Java-Agents'         : getDependencies(configurations.quasar).iterator().next(),
                 'Repositories'      : 'central https://oss.sonatype.org/content/repositories/snapshots'
