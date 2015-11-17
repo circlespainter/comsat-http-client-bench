@@ -17,12 +17,14 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class Main extends FiberApplication<Configuration> {
-  private static AtomicLong concurrency = new AtomicLong(0);
-  private static AtomicLong maxConcurrency = new AtomicLong(0);
   private static Logger log = LoggerFactory.getLogger(Main.class);
 
-  private static Timer ts = new Timer(true);
-  private static Timer tp = new Timer(true);
+  private static AtomicLong concurrency = new AtomicLong(0);
+  private static AtomicLong maxConcurrency = new AtomicLong(0);
+  private static AtomicLong reqs = new AtomicLong(0);
+
+  private static Timer ts;
+  private static Timer tp;
 
   public static void main(String[] args) throws Exception {
     new Main().run(args);
@@ -55,6 +57,7 @@ public class Main extends FiberApplication<Configuration> {
         throw new AssertionError(t);
       } finally {
         concurrency.decrementAndGet();
+        reqs.incrementAndGet();
       }
     }
   }
@@ -63,9 +66,12 @@ public class Main extends FiberApplication<Configuration> {
   @Produces(MediaType.TEXT_PLAIN)
   public static class MonitorResource {
     private static AtomicReference<Utils.SysStats> stats = new AtomicReference<>();
-    @Path("start") @GET public boolean start(@QueryParam("sampleIntervalMS") Long sampleIntervalMS, @QueryParam("printIntervalMS") Long printIntervalMS) {
-      final long actualSampleIntervalMS = sampleIntervalMS != null ? sampleIntervalMS : 1_000L;
-      if (actualSampleIntervalMS > 0)
+    @Path("start") @GET public boolean start(@QueryParam("sampleIntervalMS") Long sampleIntervalMS, @QueryParam("printIntervalMS") Long printIntervalMS, @QueryParam("sysMon") Boolean sysMon) {
+      tp = new Timer(true);
+      ts = new Timer(true);
+      final long actualSampleIntervalMS = sampleIntervalMS != null ? sampleIntervalMS : 100L;
+      final boolean actuallySysMon = sysMon == null || sysMon;
+      if (actualSampleIntervalMS > 0 && actuallySysMon)
         ts.schedule (
           new TimerTask() {
             @Override
@@ -76,32 +82,46 @@ public class Main extends FiberApplication<Configuration> {
           0,
           actualSampleIntervalMS
         );
-      final long actualPrintIntervalMS = printIntervalMS != null ? printIntervalMS : 1_000L;
+
+      final long actualPrintIntervalMS = printIntervalMS != null ? printIntervalMS : 100L;
       if (actualPrintIntervalMS > 0)
         tp.schedule (
           new TimerTask() {
             @Override
             public synchronized void run() {
               Utils.SysStats s = stats.get();
-              if (s != null)
-                log.info("Concurrency = " + concurrency.get() + " (max = " + maxConcurrency.get() + "), MEM = " + s.mem + " MB (max = " + s.maxMem +  " MB, avg = " + s.avgMem + " MB), CPU = " + s.cpu + " (max = " + s.maxCpu + ", avg = " + s.avgCpu + ")");
+              if (s != null || !actuallySysMon)
+                log.info (
+                  "Concurrency = " + concurrency.get() + " (max = " + maxConcurrency.get() + "), " +
+                  "reqs = " + reqs.get() +
+                  (actuallySysMon ?
+                    ", MEM = " + s.mem + " MB (max = " + s.maxMem +  " MB, avg = " + s.avgMem + " MB)" +
+                    ", CPU = " + s.cpu + " (max = " + s.maxCpu + ", avg = " + s.avgCpu + ")"
+                    : "")
+                );
               }
             },
           actualPrintIntervalMS,
           actualPrintIntervalMS
         );
-      log.info("Monitoring start request: sample interval = " + (actualSampleIntervalMS > 0 ? actualSampleIntervalMS + " ms" : "N/A") + ", print interval = " + (actualPrintIntervalMS > 0 ? actualPrintIntervalMS + " ms" : "N/A"));
+      log.info (
+        "Monitoring start request: sample interval = " + (actualSampleIntervalMS > 0 ? actualSampleIntervalMS + " ms" : "N/A") +
+        ", print interval = " + (actualPrintIntervalMS > 0 ? actualPrintIntervalMS + " ms" : "N/A") +
+        ", monitor RAM/CPU = " + actuallySysMon);
       return true;
     }
 
     @Path("stop") @GET public boolean stop() {
-      tp.cancel(); tp = new Timer(true);
-      ts.cancel(); ts = new Timer(true);
+      tp.cancel();
+      ts.cancel();
       log.info("Monitoring stopped");
       return true;
     }
 
     @Path("reset") @GET public boolean reset() {
+      concurrency.set(0);
+      maxConcurrency.set(0);
+      reqs.set(0);
       stats.set(null);
       Utils.resetSampleSys();
       log.info("Monitoring reset");
