@@ -4,10 +4,12 @@ import co.paralleluniverse.fibers.SuspendExecution;
 import co.paralleluniverse.strands.StrandFactory;
 import co.paralleluniverse.strands.channels.Channel;
 import co.paralleluniverse.strands.channels.Channels;
+import com.ning.http.client.AsyncHttpClientConfig;
 import com.pinterest.jbender.JBender;
 import com.pinterest.jbender.events.TimingEvent;
 import com.pinterest.jbender.events.recording.HdrHistogramRecorder;
 import com.pinterest.jbender.events.recording.LoggingRecorder;
+import com.pinterest.jbender.executors.Validator;
 import com.pinterest.jbender.intervals.ConstantIntervalGenerator;
 import com.pinterest.jbender.intervals.ExponentialIntervalGenerator;
 import com.pinterest.jbender.intervals.IntervalGenerator;
@@ -15,21 +17,40 @@ import joptsimple.OptionParser;
 import joptsimple.OptionSet;
 import joptsimple.OptionSpec;
 import org.HdrHistogram.Histogram;
+import org.glassfish.jersey.apache.connector.ApacheConnectorProvider;
+import org.glassfish.jersey.client.HttpUrlConnectorProvider;
+import org.glassfish.jersey.client.spi.CachingConnectorProvider;
+import org.glassfish.jersey.client.spi.ConnectorProvider;
+import org.glassfish.jersey.grizzly.connector.GrizzlyConnectorProvider;
+import org.glassfish.jersey.jetty.connector.JettyConnectorProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import javax.ws.rs.client.Client;
+import javax.ws.rs.core.Configuration;
+
 import static java.util.Arrays.*;
 
 import java.io.IOException;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.util.Arrays;
 import java.util.concurrent.*;
 
 import static com.pinterest.jbender.events.recording.Recorder.record;
 
 public abstract class ClientBase<Req, Res, Exec extends AutoCloseableRequestExecutor<Req, Res>, E extends Env<Req, Exec>> {
+
+  public static final Validator<String> STRING_VALIDATOR = r -> {
+    if (!"Hello!".equals(r))
+      throw new AssertionError("Request didn't complete successfully: " + r);
+  };
+
   private static final String H = "h";
   private static final String L = "l";
   private static final String P = "p";
+  private static final String CMSY = "cmsy";
+  private static final String SMSY = "smsy";
 
   private static final ExecutorService e = Executors.newCachedThreadPool();
   protected static final StrandFactory DEFAULT_FIBERS_SF = DefaultFiberScheduler.getInstance();
@@ -59,10 +80,15 @@ public abstract class ClientBase<Req, Res, Exec extends AutoCloseableRequestExec
     final OptionSpec<Integer> m = parser.acceptsAll(asList("m", "maxConnections")).withRequiredArg().ofType(Integer.class).describedAs("Maximum number of concurrent connections").defaultsTo(Integer.MAX_VALUE);
     final OptionSpec<Integer> t = parser.acceptsAll(asList("t", "timeout")).withRequiredArg().ofType(Integer.class).describedAs("Connection timeout (ms)").defaultsTo(3_600_000);
 
-    final OptionSpec<Integer> cmsi = parser.accepts("cmsi").withRequiredArg().ofType(Integer.class).describedAs("Client monitoring sample interval (ms)").defaultsTo(1_000);
-    final OptionSpec<Integer> cmpi = parser.accepts("cmpi").withRequiredArg().ofType(Integer.class).describedAs("Client monitoring print interval (ms)").defaultsTo(1_000);
-    final OptionSpec<Integer> smsi = parser.accepts("smsi").withRequiredArg().ofType(Integer.class).describedAs("Server monitoring sample interval (ms)").defaultsTo(1_000);
-    final OptionSpec<Integer> smpi = parser.accepts("smpi").withRequiredArg().ofType(Integer.class).describedAs("Server monitoring print interval (ms)").defaultsTo(1_000);
+    parser.accepts(CMSY);
+    final OptionSpec<Integer> cmsi = parser.accepts("cmsi").withRequiredArg().ofType(Integer.class).describedAs("Client monitoring sample interval (ms)").defaultsTo(100);
+    final OptionSpec<Integer> cmpi = parser.accepts("cmpi").withRequiredArg().ofType(Integer.class).describedAs("Client monitoring print interval (ms)").defaultsTo(100);
+    parser.accepts(SMSY);
+    final OptionSpec<Integer> smsi = parser.accepts("smsi").withRequiredArg().ofType(Integer.class).describedAs("Server monitoring sample interval (ms)").defaultsTo(100);
+    final OptionSpec<Integer> smpi = parser.accepts("smpi").withRequiredArg().ofType(Integer.class).describedAs("Server monitoring print interval (ms)").defaultsTo(100);
+
+    final OptionSpec<Integer> rbs = parser.accepts("rbs").withRequiredArg().ofType(Integer.class).describedAs("Buffer size for generated requests").defaultsTo(-1);
+    final OptionSpec<Integer> ebs = parser.accepts("ebs").withRequiredArg().ofType(Integer.class).describedAs("Buffer size for request completion events").defaultsTo(-1);
 
     parser.acceptsAll(asList(L, "logging"));
 
@@ -74,13 +100,17 @@ public abstract class ClientBase<Req, Res, Exec extends AutoCloseableRequestExec
 
     if (!options.has(v) && !options.has(r) && !options.has(n)) {
       status = -1;
-      System.out.println("Commandline error: cne of '-v', '-r' or '-n' must be present");
+      System.out.println("ERROR: one of '-v', '-r', '-n' must be provided.\n");
     }
 
     if (status != 0 || options.has(H)) {
       parser.printHelpOn(System.err);
       System.exit(status);
     }
+
+    final int reqs = options.valueOf(c);
+    final int rbsV = options.valueOf(rbs) < 0 ? reqs : options.valueOf(rbs);
+    final int ebsV = options.valueOf(ebs) < 0 ? reqs : options.valueOf(ebs);
 
     System.err.println (
       "\n=============== JBENDER SETTINGS ==============\n" +
@@ -97,31 +127,37 @@ public abstract class ClientBase<Req, Res, Exec extends AutoCloseableRequestExec
         "\n" +
         "\t* Maximum open connections (-m): " + options.valueOf(m) + "\n" +
         "\t* IO Parallelism (async only, -i): " + options.valueOf(i) + "\n" +
+        "\t* Request timeout (-t): " + options.valueOf(t) + " ms\n" +
         "\t* Requests count (-c): " + options.valueOf(c) + "\n" +
         "\t\t- Warmup requests (-w): " + options.valueOf(w) + "\n" +
-        "\t* Request timeout (-t): " + options.valueOf(t) + " ms\n" +
         "\t* HDR histogram settings:\n" +
         "\t\t- Maximum (-x): " + options.valueOf(x) + "\n" +
         "\t\t- Digits (-d): " + options.valueOf(d) + "\n" +
         "\t\t- Scaling ratio (-s): " + options.valueOf(s) + "\n" +
-        "\t* Pre-generate (-p): " + options.has("p") + "\n" +
-        "\t* Logging (-l): " + options.has("l") + "\n" +
         "\t* Monitoring settings (-1 = N/A):\n" +
+        "\t\t- Client system monitoring (-cmsy): " + options.has(CMSY) + "\n" +
         "\t\t- Client sample interval (-cmsi): " + options.valueOf(cmsi) + " ms\n" +
         "\t\t- Client print interval (-cmpi): " + options.valueOf(cmpi) + " ms\n" +
+        "\t\t- Server system monitoring (-smsy): " + options.has(SMSY) + "\n" +
         "\t\t- Server sample interval (-smsi): " + options.valueOf(smsi) + " ms\n" +
-        "\t\t- Server print interval (-smpi): " + options.valueOf(smpi) + " ms\n"
+        "\t\t- Server print interval (-smpi): " + options.valueOf(smpi) + " ms\n" +
+        "\t* Buffer size settings:\n" +
+        "\t\t- Generated requests (-rbs, equals count if pre-generating): " + rbsV + "\n" +
+        "\t\t- Request completion events (-ebs): " + ebsV + "\n" +
+        "\t* Pre-generate requests (-p): " + options.has(P) + "\n" +
+        "\t* Logging (-l): " + options.has("l") + "\n"
     );
 
     env = setupEnv(options);
     try (final Exec requestExecutor =
         env.newRequestExecutor(options.valueOf(i), options.valueOf(m), options.valueOf(t))) {
 
-      final int reqs = options.valueOf(c);
       final int warms = options.valueOf(w);
       final int recordedReqs = reqs - warms;
-      final Channel<Req> requestCh = Channels.newChannel(reqs);
-      final Channel<TimingEvent<Res>> eventCh = Channels.newChannel(reqs);
+      final Channel<Req> requestCh = Channels.newChannel(options.has(P) ? reqs : rbsV);
+      final Channel<TimingEvent<Res>> eventCh = Channels.newChannel(ebsV);
+
+      System.out.println(ebsV);
 
       final String uri = options.valueOf(u);
 
@@ -140,24 +176,25 @@ public abstract class ClientBase<Req, Res, Exec extends AutoCloseableRequestExec
         requestCh.close();
       }).start();
 
-      if (options.has("p")) {
+      if (options.has(P)) {
         reqGen.join();
       }
 
       final Histogram histogram = new Histogram(options.valueOf(x), options.valueOf(d));
 
       // Event recording, both HistHDR and logging
-      final ProgressLogger<Res, Exec> resExecProgressLogger = new ProgressLogger<>(requestExecutor, recordedReqs, options.valueOf(cmsi), options.valueOf(cmpi));
+      final ProgressLogger<Res, Exec> resExecProgressLogger = new ProgressLogger<>(requestExecutor, recordedReqs, options.has(CMSY), options.valueOf(cmsi), options.valueOf(cmpi));
       final HdrHistogramRecorder hdrHistogramRecorder = new HdrHistogramRecorder(histogram, 1);
+      final Fiber recorder;
       if (options.has("l")) {
-        record(eventCh, hdrHistogramRecorder, new LoggingRecorder(LOG), resExecProgressLogger);
+        recorder = record(eventCh, hdrHistogramRecorder, new LoggingRecorder(LOG), resExecProgressLogger);
       } else {
-        record(eventCh, hdrHistogramRecorder, resExecProgressLogger);
+        recorder = record(eventCh, hdrHistogramRecorder, resExecProgressLogger);
       }
 
       // Reset and start server monitoring
       simpleBlockingGET(options.valueOf(z) + "/reset");
-      simpleBlockingGET(options.valueOf(z) + "/start?sampleIntervalMS=" + options.valueOf(smsi) + "&printIntervalMS=" + options.valueOf(smpi));
+      simpleBlockingGET(options.valueOf(z) + "/start?sampleIntervalMS=" + options.valueOf(smsi) + "&printIntervalMS=" + options.valueOf(smpi) + "&sysMon=" + options.has(SMSY));
 
       // Main
       new Fiber<Void>("jbender", () -> {
@@ -180,12 +217,14 @@ public abstract class ClientBase<Req, Res, Exec extends AutoCloseableRequestExec
       // Stop server monitoring
       simpleBlockingGET(options.valueOf(z) + "/stop");
 
-      e.shutdown();
+      recorder.join();
 
-      System.err.println();
       histogram.outputPercentileDistribution(System.err, options.valueOf(s));
-    } catch (final Exception e) {
+
+      e.shutdown();
+    } catch (final Throwable e) {
       LOG.error("Got exception: " + e.getMessage());
+      LOG.error(Arrays.toString(e.getStackTrace()));
     }
   }
 
@@ -203,4 +242,28 @@ public abstract class ClientBase<Req, Res, Exec extends AutoCloseableRequestExec
   }
 
   private static final Logger LOG = LoggerFactory.getLogger(ClientBase.class);
+
+  public static ConnectorProvider jerseyConnProvider() throws ClassNotFoundException, IllegalAccessException, InstantiationException {
+    final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME);
+    if (logger instanceof ch.qos.logback.classic.Logger) {
+      ch.qos.logback.classic.Logger logbackLogger = (ch.qos.logback.classic.Logger) logger;
+      logbackLogger.setLevel(ch.qos.logback.classic.Level.INFO);
+    }
+
+    final String prov = System.getProperty("jersey.provider", "jetty");
+
+    if ("jdk".equals(prov.toLowerCase()))
+      return new HttpUrlConnectorProvider();
+
+    if ("apache".equals(prov.toLowerCase()))
+      return new ApacheConnectorProvider();
+
+    if ("jetty".equals(prov.toLowerCase()))
+      return new JettyConnectorProvider();
+
+    if ("grizzly".equals(prov.toLowerCase()))
+      return new GrizzlyConnectorProvider();
+
+    return (ConnectorProvider) Class.forName(prov).newInstance();
+  }
 }
