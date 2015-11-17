@@ -41,7 +41,7 @@ public class AutoCloseableApacheHttpClientRequestExecutor<X extends HttpRequestB
       throw new RuntimeException(e);
     }
 
-    if(this.validator != null) {
+    if (this.validator != null) {
       this.validator.validate(ret);
     }
 
