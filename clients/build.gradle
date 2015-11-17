@@ -10,5 +10,8 @@ dependencies {
 
     compile "net.sf.jopt-simple:jopt-simple:4.9"
 
+    compile "org.glassfish.jersey.connectors:jersey-grizzly-connector:$jerseyVer"
+    compile "org.glassfish.jersey.connectors:jersey-apache-connector:$jerseyVer"
+
     compile project(":")
 }
