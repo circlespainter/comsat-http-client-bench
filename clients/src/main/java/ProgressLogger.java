@@ -37,7 +37,7 @@ final class ProgressLogger<Res, Exec extends AutoCloseableRequestExecutor<?, Res
 
             if (succeeded + errored == total)
               ts.cancel();
-            else if (succeeded > 0 || errored > 0)
+            else
               stats.set(Utils.sampleSys());
           }
         },
@@ -54,7 +54,7 @@ final class ProgressLogger<Res, Exec extends AutoCloseableRequestExecutor<?, Res
 
           if (succeeded + errored == total) {
             tp.cancel();
-          } else if (succeeded > 0 || errored > 0) {
+          } else {
             final long end = System.nanoTime();
 
             final long finished = succeeded + errored;
