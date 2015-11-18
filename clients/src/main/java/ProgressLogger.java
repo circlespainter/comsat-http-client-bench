@@ -17,7 +17,7 @@ final class ProgressLogger<Res, Exec extends AutoCloseableRequestExecutor<?, Res
   private long notified = 0;
   private long notifiedNanos = System.nanoTime();
 
-  private long avgDurationNanos = 0;
+  private long avgDurationNanos = Long.MAX_VALUE;
 
   private AtomicReference<Utils.SysStats> stats = new AtomicReference<>(null);
 
@@ -69,7 +69,7 @@ final class ProgressLogger<Res, Exec extends AutoCloseableRequestExecutor<?, Res
             final double succeededPercent = Math.round(((double) (succeeded)) / ((double) total) * 100.0D * 100.D) / 100.D;
             final double erroredPercent = Math.round(((double) (errored)) / ((double) total) * 100.0D * 100.D) / 100.D;
 
-            log.info((succeeded + errored) + "/" + finishedRoundedPercent + "% (" + succeeded + "/" + succeededPercent + "% OK + " + errored + "/" + erroredPercent + "% KO) / " + total + " (" + newFinished + " reqs in " + newTimeNanos + " nanos = " + (1.0D / (avgDurationNanos / 1_000_000_000.0D)) + " rps, concurrency = " + requestExecutor.getCurrentConcurrency() + ", max = " + requestExecutor.getMaxConcurrency() + ")");
+            log.info((succeeded + errored) + "/" + finishedRoundedPercent + "% (" + succeeded + "/" + succeededPercent + "% OK + " + errored + "/" + erroredPercent + "% KO) / " + total + " (" + newFinished + " reqs in " + newTimeNanos + " nanos, " + (1.0D / (avgDurationNanos / 1_000_000_000.0D)) + " rps, concurrency = " + requestExecutor.getCurrentConcurrency() + ", max = " + requestExecutor.getMaxConcurrency() + ")");
 
             if (sysMon) {
               final Utils.SysStats s = stats.get();
