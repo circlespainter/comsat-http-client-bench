@@ -16,7 +16,10 @@ import joptsimple.OptionParser;
 import joptsimple.OptionSet;
 import joptsimple.OptionSpec;
 import org.HdrHistogram.Histogram;
+import org.apache.http.impl.conn.PoolingHttpClientConnectionManager;
+import org.glassfish.jersey.apache.connector.ApacheClientProperties;
 import org.glassfish.jersey.apache.connector.ApacheConnectorProvider;
+import org.glassfish.jersey.client.ClientConfig;
 import org.glassfish.jersey.client.HttpUrlConnectorProvider;
 import org.glassfish.jersey.client.spi.ConnectorProvider;
 import org.glassfish.jersey.grizzly.connector.GrizzlyConnectorProvider;
@@ -35,11 +38,6 @@ import java.util.concurrent.*;
 import static com.pinterest.jbender.events.recording.Recorder.record;
 
 public abstract class ClientBase<Req, Res, Exec extends AutoCloseableRequestExecutor<Req, Res>, E extends Env<Req, Exec>> {
-
-  public static final Validator<String> STRING_VALIDATOR = r -> {
-    if (!"Hello!".equals(r))
-      throw new AssertionError("Request didn't complete successfully: " + r);
-  };
 
   private static final String H = "h";
   private static final String L = "l";
@@ -158,8 +156,6 @@ public abstract class ClientBase<Req, Res, Exec extends AutoCloseableRequestExec
       final Channel<Req> requestCh = Channels.newChannel(options.has(P) ? reqs : rbsV);
       final Channel<TimingEvent<Res>> eventCh = Channels.newChannel(ebsV);
 
-      System.out.println(ebsV);
-
       final String uri = options.valueOf(u);
 
       // Requests generator
@@ -244,21 +240,43 @@ public abstract class ClientBase<Req, Res, Exec extends AutoCloseableRequestExec
 
   private static final Logger LOG = LoggerFactory.getLogger(ClientBase.class);
 
-  public static ConnectorProvider jerseyConnProvider() throws ClassNotFoundException, IllegalAccessException, InstantiationException {
+  public static ConnectorProvider jerseyConnProvider(ClientConfig cc) throws ClassNotFoundException, IllegalAccessException, InstantiationException {
     final String prov = System.getProperty("jersey.provider", "jetty");
 
-    if ("jdk".equals(prov.toLowerCase()))
-      return new HttpUrlConnectorProvider();
+    if ("jetty".equals(prov.toLowerCase())) {
+      LOG.info("Using Custom Jersey Jetty");
+      return new CustomJettyConnectorProvider();
+    }
 
-    if ("apache".equals(prov.toLowerCase()))
+    if ("apache".equals(prov.toLowerCase())) {
+      final PoolingHttpClientConnectionManager connectionManager = new PoolingHttpClientConnectionManager();
+      connectionManager.setMaxTotal(100000);
+      connectionManager.setDefaultMaxPerRoute(100000);
+      cc.property(ApacheClientProperties.CONNECTION_MANAGER, connectionManager);
+
+      LOG.info("Using re-configured Jersey Apache");
       return new ApacheConnectorProvider();
+    }
 
-    if ("jetty".equals(prov.toLowerCase()))
-      return new JettyConnectorProvider();
+    if ("grizzly".equals(prov.toLowerCase())) {
+      LOG.info("Using re-configured Jersey Grizzly");
 
-    if ("grizzly".equals(prov.toLowerCase()))
-      return new GrizzlyConnectorProvider();
+      return new GrizzlyConnectorProvider((client, config, configBuilder) -> configBuilder
+        .setMaximumConnectionsPerHost(100000)
+        .setMaximumConnectionsTotal(100000));
+    }
+
+    if ("jdk".equals(prov.toLowerCase())) {
+      System.setProperty("http.maxConnections", "100000");
+      LOG.info("Using re-configured Jersey JDK");
+      return new HttpUrlConnectorProvider();
+    }
 
     return (ConnectorProvider) Class.forName(prov).newInstance();
+  }
+
+  public static <X> void validate(Validator<X> validator, X v) {
+    if (v != null)
+      validator.validate(v);
   }
 }
