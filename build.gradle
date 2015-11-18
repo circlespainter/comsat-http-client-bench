@@ -106,7 +106,7 @@ allprojects {
                 'Application-Name'    : project.name,
                 'Application-Version' : project.version,
                 'Application-Class'   : 'Main',
-                'JVM-Args'            : '-XX:+AggressiveOpts',
+                'JVM-Args'            : '-XX:+AggressiveOpts -XX:-UseGCOverheadLimit',
                 'System-Properties'   : 'co.paralleluniverse.fibers.detectRunawayFibers=false', // 'co.paralleluniverse.fibers.verifyInstrumentation'
                 'Java-Agents'         : getDependencies(configurations.quasar).iterator().next(),
                 'Repositories'      : 'central https://oss.sonatype.org/content/repositories/snapshots'
