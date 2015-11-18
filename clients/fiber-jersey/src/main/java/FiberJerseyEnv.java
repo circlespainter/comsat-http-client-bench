@@ -4,25 +4,27 @@ import org.glassfish.jersey.client.ClientProperties;
 
 import javax.ws.rs.client.Client;
 import javax.ws.rs.client.Invocation;
-import javax.ws.rs.core.Configuration;
 
 public class FiberJerseyEnv implements Env<Invocation.Builder, AutoCloseableJerseyHttpClientRequestExecutor> {
   private Client client;
 
   @Override
   public AutoCloseableJerseyHttpClientRequestExecutor newRequestExecutor(int ioParallelism, int ignored, int timeout) throws Exception {
-    final Configuration config = new ClientConfig().connectorProvider(ClientBase.jerseyConnProvider());
+    final ClientConfig cc =
+      new ClientConfig()
+//        .property(ClientProperties.ASYNC_THREADPOOL_SIZE, ioParallelism) // Will limit threads even in sync case...
+        .property(ClientProperties.CONNECT_TIMEOUT, timeout)
+        .property(ClientProperties.READ_TIMEOUT, timeout);
 
-    this.client = AsyncClientBuilder.newClient(config)
-      .property(ClientProperties.ASYNC_THREADPOOL_SIZE, ioParallelism)
-      .property(ClientProperties.CONNECT_TIMEOUT, timeout)
-      .property(ClientProperties.READ_TIMEOUT, timeout);
+    cc.connectorProvider(ClientBase.jerseyConnProvider(cc));
 
-    return new AutoCloseableJerseyHttpClientRequestExecutor(client, ClientBase.STRING_VALIDATOR);
+    this.client = AsyncClientBuilder.newClient(cc);
+
+    return new AutoCloseableJerseyHttpClientRequestExecutor(client, AutoCloseableJerseyHttpClientRequestExecutor.REQUEST_VALIDATOR);
   }
 
   @Override
-  public Invocation.Builder newRequest(String uri) throws Exception {
-    return client.target(uri).request();
+  public Invocation.Builder newRequest(String url) throws Exception {
+    return client.target(url).request();
   }
 }

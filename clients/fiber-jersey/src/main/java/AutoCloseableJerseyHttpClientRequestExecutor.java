@@ -1,5 +1,6 @@
 import co.paralleluniverse.fibers.SuspendExecution;
 import com.pinterest.jbender.executors.Validator;
+import org.glassfish.jersey.client.ClientConfig;
 
 import javax.ws.rs.client.Client;
 import javax.ws.rs.client.Invocation;
@@ -7,26 +8,26 @@ import javax.ws.rs.core.Response;
 import java.io.IOException;
 import java.util.concurrent.ExecutionException;
 
-public class AutoCloseableJerseyHttpClientRequestExecutor extends AutoCloseableRequestExecutor<Invocation.Builder, String> {
-  protected final Validator<String> validator;
-  protected final Client client;
+public class AutoCloseableJerseyHttpClientRequestExecutor extends AutoCloseableRequestExecutor<Invocation.Builder, Response> {
+  public static final Validator<Response> REQUEST_VALIDATOR = (Response r) -> {
+    if (r.getStatus() != 200 && r.getStatus() != 204)
+      throw new AssertionError("Request didn't complete successfully: " + r.getStatus());
+  };
+  private final Validator<Response> validator;
+  private final Client client;
 
-  public AutoCloseableJerseyHttpClientRequestExecutor(Client client, Validator<String> resValidator) {
+  public AutoCloseableJerseyHttpClientRequestExecutor(Client client, Validator<Response> resValidator) {
     this.client = client;
     this.validator = resValidator;
   }
 
-  public String execute0(long nanoTime, Invocation.Builder request) throws InterruptedException, SuspendExecution {
-    final String ret;
-    try {
-      ret = request.async().get(String.class).get();
-    } catch (final ExecutionException e) {
-      throw new RuntimeException(e);
-    }
+  @Override
+  public Response execute0(long nanoTime, Invocation.Builder request) throws InterruptedException, SuspendExecution {
+    final Response ret = request.get(Response.class);
 
-    if (this.validator != null) {
-      this.validator.validate(ret);
-    }
+    ClientBase.validate(validator, ret);
+
+    ret.close();
 
     return ret;
   }
