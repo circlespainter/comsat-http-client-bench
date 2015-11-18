@@ -33,6 +33,7 @@ public class AutoCloseableApacheHttpClientRequestExecutor<X extends HttpRequestB
     this.validator = resValidator;
   }
 
+  @Override
   public CloseableHttpResponse execute0(long nanoTime, HttpRequestBase request) throws InterruptedException, SuspendExecution {
     final CloseableHttpResponse ret;
     try {
@@ -41,9 +42,7 @@ public class AutoCloseableApacheHttpClientRequestExecutor<X extends HttpRequestB
       throw new RuntimeException(e);
     }
 
-    if (this.validator != null) {
-      this.validator.validate(ret);
-    }
+    ClientBase.validate(validator, ret);
 
     try {
       ret.close();

@@ -44,9 +44,7 @@ public class AutoCloseableOkHttpClientRequestExecutor extends AutoCloseableReque
       throw new RuntimeExecutionException(e);
     }
 
-    if (this.validator != null) {
-      this.validator.validate(ret);
-    }
+    ClientBase.validate(validator, ret);
 
     return ret;
   }
