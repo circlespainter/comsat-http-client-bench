@@ -1,12 +1,10 @@
 import co.paralleluniverse.fibers.SuspendExecution;
 import com.pinterest.jbender.executors.Validator;
-import org.glassfish.jersey.client.ClientConfig;
 
 import javax.ws.rs.client.Client;
 import javax.ws.rs.client.Invocation;
 import javax.ws.rs.core.Response;
 import java.io.IOException;
-import java.util.concurrent.ExecutionException;
 
 public class AutoCloseableJerseyHttpClientRequestExecutor extends AutoCloseableRequestExecutor<Invocation.Builder, Response> {
   public static final Validator<Response> REQUEST_VALIDATOR = (Response r) -> {
@@ -23,7 +21,7 @@ public class AutoCloseableJerseyHttpClientRequestExecutor extends AutoCloseableR
 
   @Override
   public Response execute0(long nanoTime, Invocation.Builder request) throws InterruptedException, SuspendExecution {
-    final Response ret = request.get(Response.class);
+    final Response ret = request.get();
 
     ClientBase.validate(validator, ret);
 
