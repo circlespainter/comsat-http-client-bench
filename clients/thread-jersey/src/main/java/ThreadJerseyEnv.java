@@ -1,27 +1,26 @@
 import org.glassfish.jersey.client.ClientConfig;
 import org.glassfish.jersey.client.ClientProperties;
-import org.glassfish.jersey.client.spi.ConnectorProvider;
-import org.glassfish.jersey.jetty.connector.JettyConnectorProvider;
 
 import javax.ws.rs.client.Client;
 import javax.ws.rs.client.ClientBuilder;
 import javax.ws.rs.client.Invocation;
-import javax.ws.rs.core.Configuration;
 
 public class ThreadJerseyEnv implements Env<Invocation.Builder, AutoCloseableJerseyHttpClientRequestExecutor> {
   private Client client;
 
   @Override
   public AutoCloseableJerseyHttpClientRequestExecutor newRequestExecutor(int ioParallelism, int ignored, int timeout) throws Exception {
-    final Configuration config = new ClientConfig().connectorProvider(ClientBase.jerseyConnProvider());
+    final ClientConfig cc =
+      new ClientConfig()
+//        .property(ClientProperties.ASYNC_THREADPOOL_SIZE, ioParallelism) // Will limit threads even in sync case...
+        .property(ClientProperties.CONNECT_TIMEOUT, timeout)
+        .property(ClientProperties.READ_TIMEOUT, timeout);
 
-    this.client = ClientBuilder.newClient(config)
-      .property(ClientProperties.ASYNC_THREADPOOL_SIZE, ioParallelism)
-      .property(ClientProperties.CONNECT_TIMEOUT, timeout)
-      .property(ClientProperties.READ_TIMEOUT, timeout)
-    ;
+    cc.connectorProvider(ClientBase.jerseyConnProvider(cc));
 
-    return new AutoCloseableJerseyHttpClientRequestExecutor(client, ClientBase.STRING_VALIDATOR);
+    this.client = ClientBuilder.newClient(cc);
+
+    return new AutoCloseableJerseyHttpClientRequestExecutor(client, AutoCloseableJerseyHttpClientRequestExecutor.REQUEST_VALIDATOR);
   }
 
   @Override

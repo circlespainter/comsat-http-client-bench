@@ -5,10 +5,8 @@ import javax.ws.rs.client.Invocation;
 import javax.ws.rs.core.Response;
 import java.io.IOException;
 import java.util.concurrent.ExecutionException;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
-public class Main extends ClientBase<Invocation.Builder, String, AutoCloseableJerseyHttpClientRequestExecutor, ThreadJerseyEnv> {
+public class Main extends ClientBase<Invocation.Builder, Response, AutoCloseableJerseyHttpClientRequestExecutor, ThreadJerseyEnv> {
   @Override
   protected ThreadJerseyEnv setupEnv(OptionSet options) {
     return new ThreadJerseyEnv();
