@@ -4,7 +4,6 @@ import co.paralleluniverse.fibers.SuspendExecution;
 import co.paralleluniverse.strands.StrandFactory;
 import co.paralleluniverse.strands.channels.Channel;
 import co.paralleluniverse.strands.channels.Channels;
-import com.ning.http.client.AsyncHttpClientConfig;
 import com.pinterest.jbender.JBender;
 import com.pinterest.jbender.events.TimingEvent;
 import com.pinterest.jbender.events.recording.HdrHistogramRecorder;
@@ -19,15 +18,11 @@ import joptsimple.OptionSpec;
 import org.HdrHistogram.Histogram;
 import org.glassfish.jersey.apache.connector.ApacheConnectorProvider;
 import org.glassfish.jersey.client.HttpUrlConnectorProvider;
-import org.glassfish.jersey.client.spi.CachingConnectorProvider;
 import org.glassfish.jersey.client.spi.ConnectorProvider;
 import org.glassfish.jersey.grizzly.connector.GrizzlyConnectorProvider;
 import org.glassfish.jersey.jetty.connector.JettyConnectorProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import javax.ws.rs.client.Client;
-import javax.ws.rs.core.Configuration;
 
 import static java.util.Arrays.*;
 
@@ -61,6 +56,12 @@ public abstract class ClientBase<Req, Res, Exec extends AutoCloseableRequestExec
   protected abstract E setupEnv(OptionSet options);
 
   final public void run(final String[] args, final StrandFactory sf) throws SuspendExecution, InterruptedException, ExecutionException, IOException {
+    final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME);
+    if (logger instanceof ch.qos.logback.classic.Logger) {
+      ch.qos.logback.classic.Logger logbackLogger = (ch.qos.logback.classic.Logger) logger;
+      logbackLogger.setLevel(ch.qos.logback.classic.Level.INFO);
+    }
+
     final OptionParser parser = new OptionParser();
     final OptionSpec<Integer> r = parser.acceptsAll(asList("r", "rate")).withOptionalArg().ofType(Integer.class).describedAs("The desired throughput, in requests per second");
     final OptionSpec<Integer> v = parser.acceptsAll(asList("v", "interval")).withOptionalArg().ofType(Integer.class).describedAs("The interval between requests, in milliseconds");
@@ -244,12 +245,6 @@ public abstract class ClientBase<Req, Res, Exec extends AutoCloseableRequestExec
   private static final Logger LOG = LoggerFactory.getLogger(ClientBase.class);
 
   public static ConnectorProvider jerseyConnProvider() throws ClassNotFoundException, IllegalAccessException, InstantiationException {
-    final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME);
-    if (logger instanceof ch.qos.logback.classic.Logger) {
-      ch.qos.logback.classic.Logger logbackLogger = (ch.qos.logback.classic.Logger) logger;
-      logbackLogger.setLevel(ch.qos.logback.classic.Level.INFO);
-    }
-
     final String prov = System.getProperty("jersey.provider", "jetty");
 
     if ("jdk".equals(prov.toLowerCase()))
