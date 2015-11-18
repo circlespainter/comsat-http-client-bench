@@ -112,13 +112,15 @@ public class Main extends FiberApplication<Configuration> {
     }
 
     @Path("stop") @GET public boolean stop() {
-      tp.cancel();
-      ts.cancel();
+      if (tp != null) tp.cancel();
+      if (tp != null) ts.cancel();
       log.info("Monitoring stopped");
       return true;
     }
 
     @Path("reset") @GET public boolean reset() {
+      if (tp != null) tp.cancel();
+      if (tp != null) ts.cancel();
       concurrency.set(0);
       maxConcurrency.set(0);
       reqs.set(0);
