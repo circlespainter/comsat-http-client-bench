@@ -1,3 +1,6 @@
+package co.paralleluniverse.comsat.bench.http.client;
+
+import co.paralleluniverse.comsat.bench.http.Utils;
 import com.pinterest.jbender.events.TimingEvent;
 import com.pinterest.jbender.events.recording.Recorder;
 import org.slf4j.Logger;

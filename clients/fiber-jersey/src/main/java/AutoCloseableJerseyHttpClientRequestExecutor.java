@@ -1,3 +1,5 @@
+import co.paralleluniverse.comsat.bench.http.client.AutoCloseableRequestExecutor;
+import co.paralleluniverse.comsat.bench.http.client.ClientBase;
 import co.paralleluniverse.fibers.SuspendExecution;
 import com.pinterest.jbender.executors.Validator;
 

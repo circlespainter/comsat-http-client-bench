@@ -1,3 +1,5 @@
+package co.paralleluniverse.comsat.bench.http.client;
+
 import jersey.repackaged.com.google.common.util.concurrent.FutureCallback;
 import jersey.repackaged.com.google.common.util.concurrent.Futures;
 import jersey.repackaged.com.google.common.util.concurrent.SettableFuture;

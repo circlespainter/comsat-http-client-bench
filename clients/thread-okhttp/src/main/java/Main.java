@@ -1,3 +1,4 @@
+import co.paralleluniverse.comsat.bench.http.client.ClientBase;
 import co.paralleluniverse.fibers.SuspendExecution;
 import com.squareup.okhttp.Request;
 import com.squareup.okhttp.Response;

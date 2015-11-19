@@ -1,3 +1,5 @@
+package co.paralleluniverse.comsat.bench.http.client;
+
 import org.eclipse.jetty.client.HttpClient;
 import org.glassfish.jersey.client.Initializable;
 import org.glassfish.jersey.client.spi.Connector;

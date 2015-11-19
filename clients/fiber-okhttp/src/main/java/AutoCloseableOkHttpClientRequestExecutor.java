@@ -1,3 +1,5 @@
+import co.paralleluniverse.comsat.bench.http.client.AutoCloseableRequestExecutor;
+import co.paralleluniverse.comsat.bench.http.client.ClientBase;
 import co.paralleluniverse.fibers.RuntimeExecutionException;
 import co.paralleluniverse.fibers.SuspendExecution;
 import co.paralleluniverse.fibers.okhttp.FiberOkHttpClient;
@@ -5,7 +7,6 @@ import com.pinterest.jbender.executors.Validator;
 import com.squareup.okhttp.*;
 
 import java.io.IOException;
-import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.TimeUnit;
 
 public class AutoCloseableOkHttpClientRequestExecutor extends AutoCloseableRequestExecutor<Request, Response> {

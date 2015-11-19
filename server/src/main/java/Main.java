@@ -1,3 +1,4 @@
+import co.paralleluniverse.comsat.bench.http.Utils;
 import co.paralleluniverse.fibers.Fiber;
 import co.paralleluniverse.fibers.Suspendable;
 import co.paralleluniverse.fibers.dropwizard.FiberApplication;

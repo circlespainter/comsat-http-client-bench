@@ -1,5 +1,5 @@
+import co.paralleluniverse.comsat.bench.http.client.Env;
 import com.squareup.okhttp.Request;
-import com.squareup.okhttp.Response;
 
 public class FiberOkHttpEnv implements Env<Request, AutoCloseableOkHttpClientRequestExecutor> {
   @Override

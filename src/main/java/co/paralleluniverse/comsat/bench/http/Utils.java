@@ -1,3 +1,5 @@
+package co.paralleluniverse.comsat.bench.http;
+
 import javax.management.*;
 import java.lang.management.ManagementFactory;
 

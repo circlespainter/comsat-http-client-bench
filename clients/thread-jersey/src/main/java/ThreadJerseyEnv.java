@@ -1,3 +1,5 @@
+import co.paralleluniverse.comsat.bench.http.client.ClientBase;
+import co.paralleluniverse.comsat.bench.http.client.Env;
 import org.glassfish.jersey.client.ClientConfig;
 import org.glassfish.jersey.client.ClientProperties;
 

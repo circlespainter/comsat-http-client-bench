@@ -1,3 +1,4 @@
+import co.paralleluniverse.comsat.bench.http.client.Env;
 import com.squareup.okhttp.OkHttpClient;
 import com.squareup.okhttp.Request;
 

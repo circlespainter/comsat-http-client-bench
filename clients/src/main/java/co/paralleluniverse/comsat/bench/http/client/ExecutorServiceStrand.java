@@ -1,3 +1,5 @@
+package co.paralleluniverse.comsat.bench.http.client;
+
 import co.paralleluniverse.strands.Strand;
 import co.paralleluniverse.strands.SuspendableCallable;
 

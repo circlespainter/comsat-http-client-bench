@@ -1,3 +1,4 @@
+import co.paralleluniverse.comsat.bench.http.client.Env;
 import co.paralleluniverse.fibers.httpclient.FiberHttpClient;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.impl.nio.client.CloseableHttpAsyncClient;

@@ -1,3 +1,5 @@
+package co.paralleluniverse.comsat.bench.http.client;
+
 import co.paralleluniverse.fibers.DefaultFiberScheduler;
 import co.paralleluniverse.fibers.Fiber;
 import co.paralleluniverse.fibers.SuspendExecution;
@@ -23,7 +25,6 @@ import org.glassfish.jersey.client.ClientConfig;
 import org.glassfish.jersey.client.HttpUrlConnectorProvider;
 import org.glassfish.jersey.client.spi.ConnectorProvider;
 import org.glassfish.jersey.grizzly.connector.GrizzlyConnectorProvider;
-import org.glassfish.jersey.jetty.connector.JettyConnectorProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -38,16 +39,15 @@ import java.util.concurrent.*;
 import static com.pinterest.jbender.events.recording.Recorder.record;
 
 public abstract class ClientBase<Req, Res, Exec extends AutoCloseableRequestExecutor<Req, Res>, E extends Env<Req, Exec>> {
+  private static final ExecutorService e = Executors.newCachedThreadPool();
+  public static final StrandFactory DEFAULT_FIBERS_SF = DefaultFiberScheduler.getInstance();
+  public static final StrandFactory CACHED_THREAD_SF = target -> new ExecutorServiceStrand(e, target);
 
   private static final String H = "h";
   private static final String L = "l";
   private static final String P = "p";
   private static final String CMSY = "cmsy";
   private static final String SMSY = "smsy";
-
-  private static final ExecutorService e = Executors.newCachedThreadPool();
-  protected static final StrandFactory DEFAULT_FIBERS_SF = DefaultFiberScheduler.getInstance();
-  protected static final StrandFactory CACHED_THREAD_SF = target -> new ExecutorServiceStrand(e, target);
 
   private E env;
 

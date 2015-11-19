@@ -1,3 +1,5 @@
+package co.paralleluniverse.comsat.bench.http.client;
+
 import co.paralleluniverse.fibers.SuspendExecution;
 import com.pinterest.jbender.executors.RequestExecutor;
 
