@@ -29,6 +29,8 @@ allprojects {
     ext.junitVer        = '4.12'
     ext.capsuleVersion  = '1.0.2-SNAPSHOT'
 
+    ext.clojureVer      = '1.7.0'
+
     ext.metricsVer      = '3.1.2'
     ext.jdbiVer         = '2.63.1'
     ext.slf4jApiVer     = '1.7.12'
@@ -53,8 +55,19 @@ allprojects {
             force "org.slf4j:slf4j-api:$slf4jApiVer"
             force "org.apache.httpcomponents:httpcore:$httpCoreVer"
             force "org.apache.httpcomponents:httpclient:$httpClientVer"
-            force "org.hdrhistogram:HdrHistogram:${hdrVer}"
-            force "co.paralleluniverse:quasar-core:${quasarVer}"
+            force "org.hdrhistogram:HdrHistogram:$hdrVer"
+            force "co.paralleluniverse:quasar-core:$quasarVer"
+
+            force "org.clojure:clojure:$clojureVer"
+            force "co.paralleluniverse:pulsar:$quasarVer"
+            force "org.clojure:tools.analyzer.jvm:0.3.0"
+            force "clojuresque:clojuresque-base:1.7.0"
+            force "de.kotka.gradle:gradle-utils:0.2.2"
+            force "org.clojure:core.cache:0.6.4"
+            force "riddley:riddley:0.1.9"
+            force "potemkin:potemkin:0.4.1"
+            force "commons-codec:commons-codec:1.10"
+            force "clj-tuple:clj-tuple:0.2.2"
         }
     }
 
