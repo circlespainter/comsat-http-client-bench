@@ -1,0 +1,28 @@
+buildscript {
+    repositories {
+        maven { url "http://clojars.org/repo" }
+        mavenCentral()
+    }
+    dependencies {
+        classpath "clojuresque:clojuresque:1.7.0"
+    }
+}
+
+apply plugin: 'clojure-min'
+
+repositories {
+    maven { url "http://clojars.org/repo" }
+}
+
+dependencies {
+    compile project(":clients")
+    compile "org.clojure:clojure:$clojureVer"
+    compile "co.paralleluniverse:quasar-core:$quasarVer"
+    compile "co.paralleluniverse:pulsar:$quasarVer"
+    compile "clj-http:clj-http:2.0.0"
+}
+
+clojure {
+    warnOnReflection = true
+    aotCompile = true
+}
