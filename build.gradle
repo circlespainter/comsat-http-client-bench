@@ -16,7 +16,6 @@ allprojects {
 
     apply plugin: 'maven'
     apply plugin: 'java'
-    apply plugin: 'application'
 
     ext.classifier      = ':'  // ':jdk8'
     sourceCompatibility = 1.8     // 1.7
@@ -111,7 +110,7 @@ allprojects {
                 'JVM-Args'            : '-XX:+AggressiveOpts -XX:-UseGCOverheadLimit',
                 'System-Properties'   : 'co.paralleluniverse.fibers.detectRunawayFibers=false', // 'co.paralleluniverse.fibers.verifyInstrumentation'
                 'Java-Agents'         : getDependencies(configurations.quasar).iterator().next(),
-                'Repositories'      : 'central https://oss.sonatype.org/content/repositories/snapshots'
+                'Repositories'        : 'central https://oss.sonatype.org/content/repositories/snapshots'
             )
         }
     }
