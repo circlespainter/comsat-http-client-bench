@@ -62,7 +62,7 @@ public abstract class ClientBase<Req, Res, Exec extends AutoCloseableRequestExec
 
     final OptionParser parser = new OptionParser();
     final OptionSpec<Integer> r = parser.acceptsAll(asList("r", "rate")).withOptionalArg().ofType(Integer.class).describedAs("The desired throughput, in requests per second");
-    final OptionSpec<Integer> v = parser.acceptsAll(asList("v", "interval")).withOptionalArg().ofType(Integer.class).describedAs("The interval between requests, in milliseconds");
+    final OptionSpec<Integer> v = parser.acceptsAll(asList("v", "interval")).withOptionalArg().ofType(Integer.class).describedAs("The interval between requests, in nanoseconds");
     final OptionSpec<Integer> n = parser.acceptsAll(asList("n", "maxConcurrency")).withOptionalArg().ofType(Integer.class).describedAs("Maximum concurrency level");
     final OptionSpec<Integer> w = parser.acceptsAll(asList("w", "warmup")).withOptionalArg().ofType(Integer.class).describedAs("The number of requests used to warm up the load tester").defaultsTo(1_000);
     final OptionSpec<Integer> c = parser.acceptsAll(asList("c", "count")).withRequiredArg().ofType(Integer.class).describedAs("Requests count").defaultsTo(11_000);
@@ -121,7 +121,7 @@ public abstract class ClientBase<Req, Res, Exec extends AutoCloseableRequestExec
               "* Maximum concurrency level (-n): " + options.valueOf(n) :
               "* Desired throughput for exponential interval generator (rps, -r): " + options.valueOf(r)
             ) :
-            "* Constant interval between requests (ms, -v): " + options.valueOf(v)
+            "* Constant interval between requests (ns, -v): " + options.valueOf(v)
           ) +
         "\n" +
         "\t* Maximum open connections (-m): " + options.valueOf(m) + "\n" +
