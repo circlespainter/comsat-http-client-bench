@@ -21,24 +21,24 @@ allprojects {
     sourceCompatibility = 1.8     // 1.7
     targetCompatibility = 1.8     // 1.7
 
-    ext.quasarVer       = '0.7.4-SNAPSHOT'
-    ext.comsatVer       = '0.5.0'
-    ext.slf4jVer        = '1.7.12'
+    ext.quasarVer       = '0.7.4'
+    ext.comsatVer       = '0.7.0'
+    ext.slf4jVer        = '1.7.21'
     ext.log4jVer        = '1.2.17'
     ext.jbenderVer      = '1.0.1-SNAPSHOT'
     ext.junitVer        = '4.12'
-    ext.capsuleVersion  = '1.0.2-SNAPSHOT'
+    ext.capsuleVersion  = '1.0.2'
 
     ext.clojureVer      = '1.7.0'
 
     ext.metricsVer      = '3.1.2'
     ext.jdbiVer         = '2.63.1'
-    ext.slf4jApiVer     = '1.7.12'
-    ext.httpCoreVer     = '4.4.1'
+    ext.slf4jApiVer     = '1.7.21'
+    ext.httpCoreVer     = '4.4.4'
     ext.httpClientVer   = '4.5'
-    ext.hdrVer          = '2.1.7'
+    ext.hdrVer          = '2.1.8'
 
-    ext.jerseyVer       = '2.19'
+    ext.jerseyVer       = '2.22.2'
 
     [compileJava, compileTestJava]*.options*.encoding = 'UTF-8'
 
@@ -68,6 +68,7 @@ allprojects {
             force "potemkin:potemkin:0.4.1"
             force "commons-codec:commons-codec:1.10"
             force "clj-tuple:clj-tuple:0.2.2"
+            force "com.google.guava:guava:19.0"
         }
     }
 

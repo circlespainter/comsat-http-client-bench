@@ -262,8 +262,8 @@ public abstract class ClientBase<Req, Res, Exec extends AutoCloseableRequestExec
       LOG.info("Using re-configured Jersey Grizzly");
 
       return new GrizzlyConnectorProvider((client, config, configBuilder) -> configBuilder
-        .setMaximumConnectionsPerHost(100000)
-        .setMaximumConnectionsTotal(100000));
+        .setMaxConnectionsPerHost(100000)
+        .setMaxConnections(100000));
     }
 
     if ("jdk".equals(prov.toLowerCase())) {
