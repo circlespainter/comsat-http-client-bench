@@ -4,7 +4,7 @@ This is a set of highly concurrent load test clients built with [JBender](https:
 
 ## Quickstart
 
-1. Build all the executables with `gradle fatCapsule` (uses [Capsule](http://capsule.io)).
+1. Build all the executables with `./gradlew fatCapsule` (uses [Capsule](http://capsule.io)).
 2. In one terminal/machine run the server with `java -jar server/build/libs/server-fatcap.jar server server/conf.yml`.
 3. In another terminal/machine run the load tester with `java -jar ${TECH}/build/libs/${TECH}-fatcap.jar` to see the available options. At the very one of `-v`, `-r` or `-n` must be provided.
 
