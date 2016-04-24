@@ -19,6 +19,28 @@ The code in this project complements [the corresponding benchmarking blog post](
 * `thread-okhttp`
 * `fiber-okhttp`
 
+## Quickstart - Clojure
+
+1. Install the other Gradle-based project modules with `./gradlew install`.
+2. Build the Clojure capsules (on Unix):
+
+``` bash
+cd clients/thread-cljhttp
+./lein capsule
+cd ../fiber-cljhttp
+./lein capsule
+cd ../..
+```
+
+3. In one terminal/machine run the server with `java -jar server/build/libs/server-fatcap.jar server server/conf.yml`.
+
+4. In another terminal/machine run the load tester with `java -jar clients/${TECH}/target/capsules/${TECH}-0.1.0-SNAPSHOT-capsule.jar` to see the available options. At the very one of `-v`, `-r` or `-n` must be provided.
+
+`${TECH}` can be one of the following:
+
+* `thread-cljhttp`
+* `fiber-cljhttp`
+
 ## Notes
 
 * `jersey` (Java) support configuring the HTTP connector with the additional `-Dcapsule.jvm.args="-Djersey.provider=<class name>"`. The following short identifiers are recognised as well: `jetty` (default), `grizzly`, `apache`, `jdk`.
