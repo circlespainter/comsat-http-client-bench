@@ -2,7 +2,7 @@
 
 This is a set of highly concurrent load test clients built with [JBender](https://github.com/pinterest/jbender) (which uses [Quasar](http://www.paralleluniverse.co/quasar/)) and a test server.
 
-## Quickstart
+## Quickstart - Java
 
 1. Build all the executables with `./gradlew fatCapsule` (uses [Capsule](http://capsule.io)).
 2. In one terminal/machine run the server with `java -jar server/build/libs/server-fatcap.jar server server/conf.yml`.
